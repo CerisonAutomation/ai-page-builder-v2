@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { usePuck } from "@measured/puck";
 import type { Data } from "@measured/puck";
 import {
@@ -71,6 +71,9 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
   const [newLabel, setNewLabel] = useState("");
   const [restoringId, setRestoringId] = useState<string | null>(null);
 
+  // ✅ DIRTY-STATE REF: only auto-snapshot when data actually changes
+  const prevSnapshotDataRef = useRef<string>(JSON.stringify(state.data));
+
   // Load versions
   const loadVersions = useCallback(async () => {
     if (!pageId) return;
@@ -96,11 +99,14 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
     }
   }, [expanded, pageId, loadVersions]);
 
-  // Auto-snapshot every 30 seconds (if changed)
+  // Auto-snapshot every 30 seconds (only if data changed)
   useEffect(() => {
     if (!pageId) return;
 
     const interval = setInterval(async () => {
+      const currentJson = JSON.stringify(state.data);
+      if (currentJson === prevSnapshotDataRef.current) return;
+
       try {
         await fetch("/api/versions/auto-snapshot", {
           method: "POST",
@@ -110,8 +116,9 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
             data: state.data,
           }),
         });
-      } catch (error) {
-        // Silent fail for auto-snapshots - no logging needed
+        prevSnapshotDataRef.current = currentJson;
+      } catch {
+        // Silent fail for auto-snapshots
       }
     }, 30000); // 30 seconds
 

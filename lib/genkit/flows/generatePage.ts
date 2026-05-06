@@ -1,11 +1,13 @@
 /**
  * Generate Full Page Flow
  * ✅ Creates multi-block pages from description
+ * ✅ Accepts optional theme context for brand-aligned generation
  */
 
 import { z } from "zod";
-import { ai } from "./generateBlock";
+import { ai } from "@/lib/genkit/ai";
 import { puckConfig, AVAILABLE_BLOCKS, emptyPage } from "@/lib/puck/config";
+import { blockSchemaPromptMap } from "@/lib/genkit/blockSchemas";
 import { logger } from "@/lib/utils/logger";
 import type { Data } from "@measured/puck";
 
@@ -41,16 +43,40 @@ export const generatePageFlow = ai.defineFlow(
       description: z.string().min(10).max(800),
       industry: z.string().optional(),
       tone: z.enum(["professional", "casual", "bold", "minimal"]).optional(),
+      themeContext: z
+        .object({
+          colorPrimary: z.string().optional(),
+          industry: z.string().optional(),
+          brandTone: z.string().optional(),
+        })
+        .optional(),
     }),
     outputSchema: PuckDataSchema,
   },
-  async ({ description, industry = "technology", tone = "professional" }) => {
+  async ({ description, industry = "technology", tone = "professional", themeContext }) => {
     const componentList = AVAILABLE_BLOCKS.join(", ");
+    const blockSchemas = AVAILABLE_BLOCKS.map(
+      (name) =>
+        `${name}: ${blockSchemaPromptMap[name] ?? "{}"}`
+    ).join("\n\n");
+
+    const brandContext = themeContext
+      ? [
+          themeContext.colorPrimary && `Brand color: ${themeContext.colorPrimary}`,
+          themeContext.brandTone && `Brand tone: ${themeContext.brandTone}`,
+          themeContext.industry && `Industry: ${themeContext.industry}`,
+        ]
+          .filter(Boolean)
+          .join(". ")
+      : "";
 
     const systemPrompt = `
 You are an expert landing page designer. Create a complete, production-quality Puck page as JSON.
 
 Available components: ${componentList}
+
+Block prop schemas:
+${blockSchemas}
 
 Page layout patterns (in order):
 1. Hero (headline, CTA)
@@ -60,11 +86,11 @@ Page layout patterns (in order):
 5. FAQ or Timeline
 
 Tone: ${tone}
-Industry: ${industry}
+Industry: ${industry}${brandContext ? `\n${brandContext}` : ""}
 
 Rules:
 1. Use 4-8 blocks (logical order: Hero → Benefits → Proof → CTA)
-2. Each block must have complete, realistic props
+2. Each block must have complete, realistic props matching the schema above
 3. No placeholder text (Lorem ipsum forbidden)
 4. All array fields: minimum 3 items
 5. URLs realistic (/pricing, /signin, /docs, etc)
@@ -83,12 +109,10 @@ Puck data format:
 }
 `;
 
-    const userPrompt = `
-Create a ${industry} page with this brief:
+    const userPrompt = `Create a ${industry} page with this brief:
 "${description}"
 
-Generate a complete, ready-to-publish page with 5-7 blocks in logical order.
-`;
+Generate a complete, ready-to-publish page with 5-7 blocks in logical order.`;
 
     try {
       const { output } = await ai.generate({
@@ -100,7 +124,7 @@ Generate a complete, ready-to-publish page with 5-7 blocks in logical order.
 
       if (!output) {
         logger.warn("No output from Gemini, returning empty page");
-        return emptyPage as Data;
+        return { ...emptyPage, zones: {} } as Data;
       }
 
       // ✅ USE safeParse FOR GRACEFUL ERROR HANDLING
@@ -110,7 +134,7 @@ Generate a complete, ready-to-publish page with 5-7 blocks in logical order.
         logger.warn("Invalid page schema", undefined, {
           errors: validation.error.flatten().fieldErrors,
         });
-        return emptyPage as Data;
+        return { ...emptyPage, zones: {} } as Data;
       }
 
       const validated = validation.data;
@@ -122,16 +146,17 @@ Generate a complete, ready-to-publish page with 5-7 blocks in logical order.
 
       if (validContent.length === 0) {
         logger.warn("No valid blocks in generated page");
-        return emptyPage as Data;
+        return { ...emptyPage, zones: {} } as Data;
       }
 
       return {
         ...validated,
         content: validContent,
+        zones: validated.zones ?? {},
       } as Data;
     } catch (error) {
       logger.error("Unexpected error in generatePageFlow", error);
-      return emptyPage as Data;
+      return { ...emptyPage, zones: {} } as Data;
     }
   }
 );

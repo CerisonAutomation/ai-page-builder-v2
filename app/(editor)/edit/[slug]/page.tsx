@@ -44,7 +44,7 @@ export default async function EditPage({ params }: EditPageProps) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    redirect(`/login?redirect=/edit/${params.slug}`);
   }
 
   try {

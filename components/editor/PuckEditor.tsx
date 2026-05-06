@@ -1,7 +1,7 @@
 /**
  * Puck Editor Client Component
  * ✅ Receives pre-loaded data from server
- * Integrates AI panel for block generation
+ * Integrates AI panel, auto-save, and tabbed sidebar
  */
 
 "use client";
@@ -11,8 +11,7 @@ import { Puck } from "@measured/puck";
 import "@measured/puck/puck.css";
 import type { Data } from "@measured/puck";
 import { puckConfig } from "@/lib/puck/config";
-import { AIEnhancedPanel } from "@/components/editor/AIPanel.enhanced";
-import { MediaPanel } from "@/components/editor/MediaPanel";
+import { Sidebar } from "@/components/editor/Sidebar";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -31,17 +30,14 @@ export default function PuckEditor({
   title,
   description,
 }: PuckEditorProps) {
-  // ✅ PRE-LOADED DATA (from server)
   const [isSaving, setIsSaving] = useState(false);
-  const [isPublished, setIsPublished] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // ✅ SAVE PAGE
+  // ✅ EXPLICIT PUBLISH
   const handlePublish = useCallback(
     async (data: Data) => {
       setIsSaving(true);
       try {
-        // Validate state before sending
         if (!data?.root?.props?.title) {
           throw new Error("Page title is required");
         }
@@ -61,19 +57,16 @@ export default function PuckEditor({
         });
 
         if (!res.ok) {
-          // Safely parse error response
           let errorMsg = `Save failed (${res.status})`;
           try {
             const errorData = await res.json();
             errorMsg = errorData.message || errorData.error || errorMsg;
           } catch {
-            // Response wasn't JSON, use status text
             errorMsg = res.statusText || errorMsg;
           }
           throw new Error(errorMsg);
         }
 
-        // Safely parse success response
         let result: any;
         try {
           result = await res.json();
@@ -83,11 +76,8 @@ export default function PuckEditor({
 
         setLastSaved(new Date());
         toast.success(pageId ? "Page updated!" : "Page created!");
-        setIsPublished(true);
 
-        // ✅ Navigate to newly created page if POST
         if (!pageId && result?.slug) {
-          // Use a microtask to ensure state updates finish
           setTimeout(() => {
             window.location.href = `/edit/${result.slug}`;
           }, 100);
@@ -105,10 +95,9 @@ export default function PuckEditor({
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      {/* ✅ PUCK EDITOR */}
       <Puck
         config={puckConfig}
-        data={initialData} // ✅ Pre-loaded from server
+        data={initialData}
         onPublish={handlePublish}
         overrides={{
           // ✅ CUSTOM ACTION BAR
@@ -139,34 +128,20 @@ export default function PuckEditor({
             </div>
           ),
 
-          // ✅ INJECT PANELS INTO SIDEBAR
-          canvas: ({ children }) => (
-            <div className="flex h-full overflow-hidden">
-              <div className="flex-1 overflow-auto">{children}</div>
-            </div>
-          ),
-
-          // ✅ CUSTOM SIDEBAR
+          // ✅ TABBED SIDEBAR (useAutoSave runs inside Puck context here)
           fields: ({ children }) => (
-            <div className="flex flex-col h-full w-80 border-r bg-white overflow-hidden">
-              <div className="flex-1 overflow-y-auto">{children}</div>
-
-              {/* ✅ AI PANEL AT BOTTOM */}
-              <div className="border-t">
-                <AIEnhancedPanel slug={slug} />
-              </div>
-
-              {/* ✅ MEDIA PANEL */}
-              <div className="border-t">
-                <MediaPanel />
-              </div>
-            </div>
+            <Sidebar
+              slug={slug}
+              pageId={pageId}
+              title={title}
+              description={description}
+              onSaved={() => setLastSaved(new Date())}
+            >
+              {children}
+            </Sidebar>
           ),
         }}
       />
-
-      {/* ✅ TOAST CONTAINER (Sonner) */}
-      <div className="fixed bottom-0 right-0 z-50" />
     </div>
   );
 }

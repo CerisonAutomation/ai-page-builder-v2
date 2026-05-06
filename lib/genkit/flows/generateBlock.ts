@@ -1,19 +1,14 @@
 /**
  * Generate Block Flow
  * ✅ Strict z.enum validation, prevents invalid blocks
+ * ✅ Block schemas injected into prompt for correct prop shapes
  */
 
 import { z } from "zod";
-import { genkit } from "genkit";
-import { googleAI } from "@genkit-ai/googleai";
-import { AVAILABLE_BLOCKS, puckConfig, AllBlockProps } from "@/lib/puck/config";
+import { AVAILABLE_BLOCKS, puckConfig } from "@/lib/puck/config";
+import { ai } from "@/lib/genkit/ai";
+import { blockSchemaMap, blockSchemaPromptMap } from "@/lib/genkit/blockSchemas";
 import { logger } from "@/lib/utils/logger";
-
-// ✅ INITIALIZE GENKIT
-export const ai = genkit({
-  plugins: [googleAI({ apiKey: process.env.GEMINI_API_KEY! })],
-  model: "googleai/gemini-2.0-flash",
-});
 
 // ✅ STRICT OUTPUT SCHEMA (enum, not string)
 export const BlockOutputSchema = z.object({
@@ -35,28 +30,32 @@ export const generateBlockFlow = ai.defineFlow(
     outputSchema: BlockOutputSchema,
   },
   async ({ prompt, context }) => {
-    // Build available blocks list with descriptions
-    const blockDescriptions = AVAILABLE_BLOCKS.map(
-      (name) => `${name}: ${puckConfig.components[name as keyof typeof puckConfig.components]?.label}`
-    ).join("\n");
+    // Build available blocks list with labels AND prop schemas
+    const blockDescriptions = AVAILABLE_BLOCKS.map((name) => {
+      const label =
+        puckConfig.components[name as keyof typeof puckConfig.components]?.label ?? name;
+      const schema = blockSchemaPromptMap[name] ?? "{}";
+      return `${name} (${label}):\n  props schema: ${schema}`;
+    }).join("\n\n");
 
     const systemPrompt = `
 You are an expert page builder assistant. Your job is to generate realistic, production-quality block content.
 
-Available blocks:
+Available blocks and their required prop shapes:
 ${blockDescriptions}
 
 Rules:
 1. componentName MUST be one of the available blocks (exact match)
-2. props must be valid JSON matching the block's expected shape
+2. props MUST match the block's schema — all required fields must be present
 3. Generate realistic content (no Lorem ipsum, no placeholders)
 4. For array fields, include 3-4 items minimum
 5. Text should be engaging and professional
-6. All text fields required, no null values
-7. URLs should be realistic (use /demo, /signin, etc.)
-8. Colors should be web-safe (hex or named)
+6. All required text fields must be non-empty strings
+7. URLs should be realistic paths (use /demo, /signin, /pricing, etc.)
+8. Colors should be web-safe (hex values preferred)
+9. Return ONLY valid JSON — no markdown, no code blocks
 
-Respond with ONLY valid JSON:
+Response format:
 {
   "componentName": "BlockName",
   "props": { ... },
@@ -64,12 +63,9 @@ Respond with ONLY valid JSON:
 }
 `;
 
-    const userPrompt = `
-${context ? `Page context: ${context}\n` : ""}
-User request: "${prompt}"
+    const userPrompt = `${context ? `Page context: ${context}\n` : ""}User request: "${prompt}"
 
-Generate a single block that best matches this request.
-`;
+Generate a single block that best matches this request.`;
 
     try {
       const { output } = await ai.generate({
@@ -85,6 +81,18 @@ Generate a single block that best matches this request.
 
       // ✅ Validate output matches schema
       const validated = BlockOutputSchema.parse(output);
+
+      // ✅ Validate props against the block-specific Zod schema
+      const blockZodSchema = blockSchemaMap[validated.componentName];
+      if (blockZodSchema) {
+        const propsResult = blockZodSchema.safeParse(validated.props);
+        if (!propsResult.success) {
+          logger.warn("AI generated props failed schema validation, using as-is", {
+            block: validated.componentName,
+            errors: propsResult.error.flatten(),
+          });
+        }
+      }
 
       // ✅ Double-check block exists in config
       if (!(validated.componentName in puckConfig.components)) {
@@ -102,4 +110,5 @@ Generate a single block that best matches this request.
 );
 
 // ✅ EXPORT FOR NEXT.js API ROUTE
+export { ai };
 export default generateBlockFlow;

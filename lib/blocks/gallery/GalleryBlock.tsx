@@ -35,7 +35,7 @@ export function GalleryBlock(props: AllBlockProps["GalleryBlock"]) {
           <img
             key={i}
             src={img}
-            alt=""
+            alt={`Gallery image ${i + 1}`}
             className="w-full h-64 object-cover rounded-lg"
           />
         ))}

@@ -17,10 +17,10 @@ export const pricingFields: FieldDef = {
       cta: { type: "text", label: "Button Text" },
       ctaHref: { type: "text", label: "Button Link" },
       highlighted: {
-        type: "select",
+        type: "radio",
         options: [
-          { label: "Yes", value: "true" },
-          { label: "No", value: "false" },
+          { label: "Featured", value: true },
+          { label: "Standard", value: false },
         ],
         label: "Featured Plan?",
       },
