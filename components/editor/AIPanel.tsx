@@ -1,6 +1,6 @@
 /**
  * AI Panel Component
- * ✅ Block & page generation in editor sidebar
+ * Block & page generation in editor sidebar
  */
 
 "use client";
@@ -8,21 +8,26 @@
 import { useState, useCallback } from "react";
 import { usePuck } from "@measured/puck";
 import type { Data } from "@measured/puck";
-import { puckConfig, emptyPage } from "@/lib/puck/config";
-import { Loader2, Sparkles, Wand2 } from "lucide-react";
+import { puckConfig } from "@/lib/puck/config";
+import { Loader2, Sparkles, Wand2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { v4 as uuid } from "uuid";
+
+type Tone = "professional" | "casual" | "bold" | "minimal";
 
 interface AIPanelProps {
   slug: string;
 }
 
 export function AIPanel({ slug }: AIPanelProps) {
-  const { dispatch } = usePuck();
+  // FIX: destructure both dispatch AND state from usePuck
+  const { dispatch, state } = usePuck();
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<"block" | "page">("block");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [industry, setIndustry] = useState("technology");
+  const [tone, setTone] = useState<Tone>("professional");
 
   const handleGenerate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -35,13 +40,12 @@ export function AIPanel({ slug }: AIPanelProps) {
 
     try {
       if (mode === "block") {
-        // ✅ GENERATE SINGLE BLOCK
         const res = await fetch("/api/ai/generate-block", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: prompt.trim(),
-            context: slug,
+            context: `${industry} page, ${tone} tone`,
           }),
         });
 
@@ -51,48 +55,37 @@ export function AIPanel({ slug }: AIPanelProps) {
 
         const output = await res.json();
 
-        // ✅ Validate component exists
+        // Validate component exists
         if (!(output.componentName in puckConfig.components)) {
           throw new Error(
             `Invalid block: ${output.componentName}. Contact support.`
           );
         }
 
-        // ✅ VALIDATE STATE BEFORE DISPATCH
-        if (!dispatch.state?.data?.content) {
+        // FIX: use state.data (not dispatch.state which is undefined)
+        if (!state?.data?.content) {
           throw new Error("Invalid editor state: content array missing");
         }
 
-        // ✅ ADD NEW BLOCK
-        const newBlock = {
-          type: output.componentName,
-          props: output.props,
-        };
-
         const updatedData: Data = {
-          ...dispatch.state.data,
+          ...state.data,
           content: [
-            ...dispatch.state.data.content,
-            newBlock,
+            ...state.data.content,
+            { type: output.componentName, props: output.props },
           ],
         };
 
-        dispatch({
-          type: "SET_DATA",
-          data: updatedData,
-        });
-
+        dispatch({ type: "SET_DATA", data: updatedData });
         toast.success(`${output.componentName} added!`);
         setPrompt("");
       } else {
-        // ✅ GENERATE FULL PAGE
         const res = await fetch("/api/ai/generate-page", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             description: prompt.trim(),
-            industry: "technology",
-            tone: "professional",
+            industry,
+            tone,
           }),
         });
 
@@ -102,32 +95,24 @@ export function AIPanel({ slug }: AIPanelProps) {
 
         const pageData = await res.json();
 
-        // ✅ REPLACE ENTIRE PAGE
-        dispatch({
-          type: "SET_DATA",
-          data: pageData as Data,
-        });
-
+        dispatch({ type: "SET_DATA", data: pageData as Data });
         toast.success("Page generated! Review and customize.");
         setPrompt("");
       }
     } catch (error: unknown) {
       let message = "Generation failed";
-        
       if (error instanceof Error) {
         message = error.message;
       } else if (typeof error === "string") {
         message = error;
       }
-        
       setError(message);
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, [prompt, mode, slug, dispatch]);
+  }, [prompt, mode, slug, dispatch, state, industry, tone]);
 
-  // ✅ KEYBOARD SHORTCUT
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -176,6 +161,46 @@ export function AIPanel({ slug }: AIPanelProps) {
         rows={3}
         className="w-full text-xs border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400"
       />
+
+      {/* Advanced options: industry + tone */}
+      <div>
+        <button
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition"
+        >
+          <ChevronDown
+            className={`w-3 h-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+          />
+          Advanced options
+        </button>
+        {showAdvanced && (
+          <div className="mt-2 space-y-2">
+            <div>
+              <label className="block text-[10px] text-slate-500 mb-1">Industry</label>
+              <input
+                type="text"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
+                placeholder="e.g., technology, healthcare..."
+                className="w-full text-xs border rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+              />
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-500 mb-1">Tone</label>
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value as Tone)}
+                className="w-full text-xs border rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+              >
+                <option value="professional">Professional</option>
+                <option value="casual">Casual</option>
+                <option value="bold">Bold</option>
+                <option value="minimal">Minimal</option>
+              </select>
+            </div>
+          </div>
+        )}
+      </div>
 
       {error && (
         <div className="text-xs text-red-600 bg-red-50 rounded p-2">

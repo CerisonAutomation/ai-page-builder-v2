@@ -1,13 +1,16 @@
 /**
  * Text Refinement API Route
- * ✅ Streams refined text with Gemini using genkit
+ * Auth-protected streaming endpoint for Gemini-powered text refinement.
  * Supports: make shorter, more engaging, professional tone, fix grammar
  */
 
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/db/supabase";
 import { appRoute } from "@genkit-ai/next";
 import { defineFlow, streamText } from "genkit";
 import { googleAI } from "@genkit-ai/googleai";
 import { z } from "zod";
+import { logger } from "@/lib/utils/logger";
 
 const ai = googleAI();
 
@@ -99,5 +102,23 @@ export const refineTextFlow = defineFlow(
   }
 );
 
-// ✅ NEXT.JS ROUTE HANDLER
-export const POST = appRoute(refineTextFlow);
+// ✅ NEXT.JS ROUTE HANDLER — Auth-protected wrapper around the streaming flow
+export async function POST(req: NextRequest) {
+  try {
+    // Auth guard — prevents unauthenticated Gemini quota consumption
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Delegate to the genkit appRoute handler after auth passes
+    return appRoute(refineTextFlow)(req);
+  } catch (error: unknown) {
+    logger.error("refine-text auth check failed", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

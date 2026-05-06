@@ -1,7 +1,7 @@
 import { logger } from "@/lib/utils/logger";
 /**
  * POST /api/versions/[pageId]/restore
- * ✅ One-click inline version restore
+ * Returns the restored page data so the editor can apply it immediately.
  */
 
 import { createServerSupabaseClient } from "@/lib/db/supabase";
@@ -36,7 +36,16 @@ export async function POST(
       label
     );
 
-    return Response.json(result);
+    // Fetch the version's data so the frontend can update the editor immediately
+    // without requiring a page refresh.
+    const supabaseClient = await createServerSupabaseClient();
+    const { data: versionRow } = await supabaseClient
+      .from("page_versions")
+      .select("data")
+      .eq("id", versionId)
+      .single();
+
+    return Response.json({ ...result, restoredData: versionRow?.data ?? null });
   } catch (error: unknown) {
     logger.error("Failed to restore version", error, { pageId: params.pageId });
     let message = "Failed to restore version";

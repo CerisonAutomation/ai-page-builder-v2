@@ -1,21 +1,23 @@
 /**
  * Generate Page API Route
- * ✅ GenKit appRoute wrapper
+ * Auth-protected: requires a valid session before calling Gemini.
  */
 
-import { appRoute } from "@genkit-ai/next";
+import { NextRequest, NextResponse } from "next/server";
+import { createServerSupabaseClient } from "@/lib/db/supabase";
 import { generatePageFlow } from "@/lib/genkit/flows/generatePage";
+import { logger } from "@/lib/utils/logger";
 
 /**
  * POST /api/ai/generate-page
- * 
+ *
  * Request:
  * {
  *   "description": "SaaS landing page for a project management tool",
  *   "industry": "technology",        // optional
  *   "tone": "professional"           // optional
  * }
- * 
+ *
  * Response:
  * {
  *   "content": [
@@ -28,4 +30,24 @@ import { generatePageFlow } from "@/lib/genkit/flows/generatePage";
  *   }
  * }
  */
-export const POST = appRoute(generatePageFlow);
+export async function POST(req: NextRequest) {
+  try {
+    // Auth guard — prevents unauthenticated Gemini quota consumption
+    const supabase = await createServerSupabaseClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const result = await generatePageFlow(body);
+    return NextResponse.json(result);
+  } catch (error: unknown) {
+    logger.error("generate-page failed", error);
+    const message = error instanceof Error ? error.message : "Generation failed";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}

@@ -19,9 +19,9 @@ const PuckContentItemSchema = z.object({
 const PuckDataSchema = z.object({
   content: z
     .array(PuckContentItemSchema)
-    .min(1)
+    .min(0)
     .max(12)
-    .describe("1-12 blocks in order"),
+    .describe("0-12 blocks in order"),
   root: z.object({
     props: z.object({
       title: z.string().min(1),

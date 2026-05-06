@@ -42,7 +42,8 @@ export async function POST(
     // Compare
     const diff = compareVersions(version.data as Data, currentData);
 
-    return Response.json({ diff });
+    // Return diff directly so the client can access diff.blocksAdded etc.
+    return Response.json(diff);
   } catch (error: unknown) {
     logger.error("Failed to compare versions", error, { pageId: params.pageId });
     let message = "Failed to compare versions";

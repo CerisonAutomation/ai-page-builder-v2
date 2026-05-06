@@ -55,7 +55,7 @@ interface VersionControlProps {
 }
 
 export function VersionControl({ pageId, slug }: VersionControlProps) {
-  const { state } = usePuck();
+  const { state, dispatch } = usePuck();
   const [versions, setVersions] = useState<VersionSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [comparing, setComparing] = useState<string | null>(null);
@@ -123,16 +123,15 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
     async (versionId: string) => {
       try {
         setComparing(versionId);
-        const res = await fetch(
-          `/api/versions/${pageId}/compare?versionId=${versionId}`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              currentData: state.data,
-            }),
-          }
-        );
+        const res = await fetch(`/api/versions/${pageId}/compare`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // FIX: include versionId in body (route reads from body, not query param)
+            versionId,
+            currentData: state.data,
+          }),
+        });
 
         if (!res.ok) throw new Error("Comparison failed");
         const diff = await res.json();
@@ -167,7 +166,15 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
 
         if (!res.ok) throw new Error("Restore failed");
 
-        toast.success("Version restored! Refresh editor to see changes.");
+        const result = await res.json();
+
+        // FIX: apply restored data to the editor immediately instead of
+        // asking the user to refresh the page.
+        if (result.restoredData) {
+          dispatch({ type: "SET_DATA", data: result.restoredData });
+        }
+
+        toast.success("Version restored!");
         await loadVersions();
       } catch (error) {
         toast.error("Failed to restore version");
@@ -175,10 +182,10 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
         setRestoringId(null);
       }
     },
-    [pageId, loadVersions]
+    [pageId, loadVersions, dispatch]
   );
 
-  // Update label
+  // Update label — FIX: use the correct /[pageId]/[versionId] sub-route
   const handleUpdateLabel = useCallback(
     async (versionId: string) => {
       if (!newLabel.trim()) {
@@ -210,7 +217,7 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
     [pageId, newLabel]
   );
 
-  // Delete version
+  // Delete version — FIX: use the correct /[pageId]/[versionId] sub-route
   const handleDeleteVersion = useCallback(
     async (versionId: string) => {
       if (!confirm("Delete this version? This cannot be undone.")) return;
@@ -233,11 +240,16 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
 
   // Filter versions
   const filteredVersions = versions.filter((v) => {
+    // "labeled": only versions that have a custom label (not auto-generated)
     if (filterMode === "labeled" && !v.label) return false;
-    if (filterMode === "recent" && !v.label) return false;
+    // FIX: "recent" = last 24 hours, not same as "labeled"
+    if (filterMode === "recent") {
+      const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+      if (new Date(v.created_at).getTime() < cutoff) return false;
+    }
 
     if (searchQuery.trim()) {
-      return v.label.toLowerCase().includes(searchQuery.toLowerCase());
+      return (v.label ?? "").toLowerCase().includes(searchQuery.toLowerCase());
     }
 
     return true;

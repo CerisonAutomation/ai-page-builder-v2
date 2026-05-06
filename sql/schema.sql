@@ -24,11 +24,13 @@ CREATE INDEX idx_pages_published ON pages(published);
 CREATE INDEX idx_pages_created_by ON pages(created_by);
 CREATE INDEX idx_pages_updated_at ON pages(updated_at DESC);
 
--- RLS: Published pages public read, authenticated users can own pages
+-- RLS: Published pages public read, authenticated users can only see their own pages
 ALTER TABLE pages ENABLE ROW LEVEL SECURITY;
 
+-- FIX: Removed "OR auth.role() = 'authenticated'" which was exposing all drafts
+-- to any authenticated user. Each policy now has a single, clear purpose.
 CREATE POLICY "public_read_published" ON pages
-  FOR SELECT USING (published = true OR auth.role() = 'authenticated');
+  FOR SELECT USING (published = true);
 
 CREATE POLICY "owner_all" ON pages
   FOR ALL USING (created_by = auth.uid());
@@ -92,6 +94,23 @@ ALTER TABLE page_versions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "view_own_versions" ON page_versions
   FOR SELECT USING (
+    EXISTS(SELECT 1 FROM pages WHERE pages.id = page_versions.page_id AND pages.created_by = auth.uid())
+  );
+
+-- FIX: Add write policies that were missing, causing server-side inserts to fail
+-- when using the anon-key client (which respects RLS).
+CREATE POLICY "owner_insert_versions" ON page_versions
+  FOR INSERT WITH CHECK (
+    EXISTS(SELECT 1 FROM pages WHERE pages.id = page_versions.page_id AND pages.created_by = auth.uid())
+  );
+
+CREATE POLICY "owner_update_versions" ON page_versions
+  FOR UPDATE USING (
+    EXISTS(SELECT 1 FROM pages WHERE pages.id = page_versions.page_id AND pages.created_by = auth.uid())
+  );
+
+CREATE POLICY "owner_delete_versions" ON page_versions
+  FOR DELETE USING (
     EXISTS(SELECT 1 FROM pages WHERE pages.id = page_versions.page_id AND pages.created_by = auth.uid())
   );
 

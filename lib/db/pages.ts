@@ -177,10 +177,11 @@ export async function listPages(
   const supabase = await createServerSupabaseClient();
 
   // ✅ OPTIMIZATION: Only fetch needed columns (performance improvement)
-  const { data: pages, error: dataError } = await supabase
+  const { data: pages, error: dataError, count } = await supabase
     .from("pages")
     .select(
-      "id,slug,title,description,published,created_at,updated_at,created_by"
+      "id,slug,title,description,published,created_at,updated_at,created_by",
+      { count: "exact" }
     )
     .eq("created_by", userId)
     .is("deleted_at", null)
@@ -189,8 +190,8 @@ export async function listPages(
 
   if (dataError) throw dataError;
 
-  // ✅ Return estimated count (faster than exact count for large tables)
-  return { pages: pages ?? [], total: pages?.length ?? 0 };
+  // FIX: use the count returned by the DB query, not pages.length
+  return { pages: pages ?? [], total: count ?? 0 };
 }
 
 // ✅ GET PAGE VERSIONS (history, owner only)

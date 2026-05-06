@@ -146,7 +146,7 @@ export function TextRefinePanel({
     }
   }, [selectedText, mode, customPrompt, context]);
 
-  // ✅ ACCEPT REFINED TEXT
+  // Accept refined text and apply it to the Puck editor state
   const handleAccept = useCallback(() => {
     if (!refined.trim()) {
       toast.error("No refined text to accept");
@@ -157,31 +157,33 @@ export function TextRefinePanel({
     if (fieldPath) {
       // Parse fieldPath like "content[0].props.headline"
       const pathParts = fieldPath.match(/\w+/g) || [];
-      let current: any = state.data;
-      let parent = null;
-      let lastKey = "";
 
-      // Navigate to the target field
+      // FIX: deep-clone the data before mutation so React detects the change
+      const clonedData = JSON.parse(JSON.stringify(state.data));
+
+      let current: any = clonedData;
+
+      // Navigate to the parent of the target field
       for (let i = 0; i < pathParts.length - 1; i++) {
         const part = pathParts[i];
-        if (!isNaN(Number(part))) {
-          current = current[Number(part)];
-        } else {
-          parent = current;
-          lastKey = part;
-          current = current[part];
+        const index = Number(part);
+        current = isNaN(index) ? current[part] : current[index];
+        if (current === undefined || current === null) {
+          toast.error("Could not locate field in page data");
+          return;
         }
       }
 
-      // Update the final field
+      // Set the final field value
       const finalKey = pathParts[pathParts.length - 1];
-      if (current && typeof current === "object") {
+      const finalIndex = Number(finalKey);
+      if (!isNaN(finalIndex)) {
+        current[finalIndex] = refined.trim();
+      } else if (current && typeof current === "object") {
         current[finalKey] = refined.trim();
-        dispatch({
-          type: "SET_DATA",
-          data: state.data,
-        });
       }
+
+      dispatch({ type: "SET_DATA", data: clonedData });
     }
 
     toast.success("Text refined and applied!");
