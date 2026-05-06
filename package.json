@@ -9,7 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "db:push": "drizzle-kit push:pg",
+    "db:push": "supabase db push",
     "db:types": "supabase gen types --lang=typescript > types/supabase.ts",
     "db:seed": "node scripts/seed.js",
     "ai:inspector": "genkit start -- npm run dev",
