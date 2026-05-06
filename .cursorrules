@@ -1,0 +1,222 @@
+## AI Page Builder V2 — System Rules
+
+### CRITICAL ARCHITECTURE PATTERNS
+
+#### Pattern 1: Server-Component Data Loading (NO BLANK EDITOR)
+- `app/(editor)/edit/[slug]/page.tsx` MUST be async server component
+- Call `getPageBySlug(params.slug)` BEFORE rendering editor
+- Pass `initialData` from server to client component
+- Client `<PuckEditor initialData={...} />` receives pre-loaded state
+- NEVER pass `data={{}}` or undefined — always have valid Puck data shape
+
+#### Pattern 2: resolveData for CMS Sync (NO STALE CONTENT)
+- Use `resolveData` callback in Puck config for external data
+- Check `changed.fieldName` to avoid re-fetching on every render
+- Mark `readOnly: true` when field is CMS-driven
+- On public render (`app/(frontend)/[slug]/page.tsx`), call `resolveAllData(data, config)` server-side
+- This ensures published pages show fresh CMS data
+
+#### Pattern 3: Genkit Flow Validation (NO INVALID BLOCKS)
+- Derive `availableBlocks` from `Object.keys(puckConfig.components)` at runtime
+- Use `z.enum(availableBlocks)` NOT `z.string()` for component names
+- Always validate AI output before dispatching to Puck
+- Filter page output: `content.filter(c => c.type in puckConfig.components)`
+- Return `emptyPage` fallback if AI fails
+
+#### Pattern 4: Supabase RLS (NO SECURITY BREACHES)
+- Enable RLS on ALL tables
+- Published pages: `FOR SELECT USING (published = true OR auth.role() = 'authenticated')`
+- User pages: `FOR ALL USING (created_by = auth.uid())`
+- Media: public read, authenticated upload
+- Test policies in Supabase dashboard under "Authentication > Policies"
+
+#### Pattern 5: API Validation (NO BAD DATA IN DB)
+- Use Zod schemas on ALL routes (GET/POST/PUT/DELETE)
+- Validate request body before DB insert
+- Return 400 with schema errors if invalid
+- Example: `SavePageSchema = z.object({ slug, title, data: PuckDataSchema })`
+
+### CODE ORGANIZATION
+
+**Blocks Folder Pattern**
+```
+lib/puck/blocks/
+├── HeroBlock.tsx         → export HeroBlock + heroBlockFields
+├── CardGridBlock.tsx     → export CardGridBlock + cardGridFields
+└── ... (all blocks)
+
+Naming:
+- Component: PascalCase (HeroBlock)
+- Fields export: camelCase + "Fields" (heroBlockFields)
+- Import in config: import { HeroBlock, heroBlockFields } from "./blocks/HeroBlock"
+```
+
+**GenKit Flows Pattern**
+```
+lib/genkit/flows/
+├── generateBlock.ts      → ai.defineFlow({ name, inputSchema, outputSchema }, handler)
+├── generatePage.ts       → full page from description
+├── editBlock.ts          → refine existing props
+└── API routes auto-wrap with genkit appRoute
+
+Every flow MUST:
+- Accept typed input (Zod schema)
+- Return typed output (Zod schema)
+- Validate before returning
+- Have OutputSchema with enums not strings for IDs/types
+```
+
+**DB Pattern**
+```
+lib/db/
+├── supabase.ts           → clients (admin + public)
+├── pages.ts              → CRUD (getPageBySlug, createPage, updatePage, etc.)
+├── media.ts              → upload, sign URLs, delete
+├── schema.ts             → Drizzle schema definitions
+└── types.ts              → TypeScript types matching Supabase tables
+
+Every function:
+- Returns typed Promise<T | null>
+- Handles errors + logs them
+- Uses supabase admin for sensitive ops
+- Uses supabase public for user-initiated ops
+```
+
+### FILE LOCATIONS (SACRED)
+
+- Entry points: `app/` directory (Next.js convention)
+- Server functions: `app/api/`, `lib/db/`, Supabase RLS
+- Client components: `components/`, marked "use client"
+- Types: `types/`, exported as modules
+- Hooks: `lib/hooks/`, named `use*`
+- Utilities: `lib/`
+- Configuration: root level (tailwind, tsconfig, next.config)
+- SQL: `sql/` directory
+- Environment: `.env.local` (git-ignored)
+
+### DISPATCH PATTERNS (PUCK ONLY)
+
+- `dispatch({ type: "INSERT", componentType: string, destinationIndex: number, id: string })`
+- `dispatch({ type: "SET_DATA", data: Data })`
+- `dispatch({ type: "REMOVE", id: string })`
+- `dispatch({ type: "MOVE", sourceIndex, destinationIndex, sourceZone?, destinationZone? })`
+
+Never:
+- Manipulate data.content directly, use dispatch
+- Update props without validating shape first
+- Render Puck inside Suspense without proper boundaries
+
+### AUTHENTICATION & RLS
+
+- Supabase Auth is the source of truth
+- Call `supabase.auth.getSession()` to check logged-in state
+- Middleware: verify auth on protected routes
+- API routes: use `req.user` from auth context
+- Supabase RLS: first line of defense, always enable
+
+### DATA SHAPES (CANONICAL)
+
+**Puck Data**
+```typescript
+{
+  content: Array<{ type: string, props: Record<string, unknown>, readOnly?: Record<string, boolean> }>,
+  root: { props: { title: string, description?: string } },
+  zones?: { [zoneId: string]: content[] }
+}
+```
+
+**Page Record (Supabase)**
+```typescript
+{
+  id: UUID,
+  slug: string,
+  title: string,
+  description?: string,
+  data: JSONB,  // Puck data above
+  published: boolean,
+  published_at?: timestamp,
+  created_by: UUID,
+  updated_by: UUID,
+  created_at: timestamp,
+  updated_at: timestamp,
+  deleted_at?: timestamp
+}
+```
+
+**GenKit Output**
+```typescript
+{
+  componentName: "HeroBlock" | "CardGridBlock" | ... (enum, never string),
+  props: { ... },  // typed to block's AllBlockProps[componentName]
+  reasoning?: string
+}
+```
+
+### SECURITY CHECKLIST
+
+- [ ] Supabase RLS enabled on all tables
+- [ ] API routes validate input with Zod
+- [ ] Sensitive ops (uploads) require auth
+- [ ] API keys server-only (env.local, never NEXT_PUBLIC_*)
+- [ ] GEMINI_API_KEY not exposed to client
+- [ ] User strings sanitized with DOMPurify before render
+- [ ] Rate limiting on `/api/ai/*` routes
+- [ ] CORS configured for your domain only
+- [ ] Audit logs track all page changes
+
+### HOOKS PATTERN
+
+```typescript
+// lib/hooks/use*.ts
+export function useMyHook() {
+  const { dispatch } = usePuck();  // from @measured/puck
+  const supabase = useSupabase();  // custom hook
+  // ... logic ...
+  return { data, loading, error };
+}
+```
+
+Exported hooks:
+- `useSupabase()` — auth + client
+- `usePuckData(slug)` — load + sync
+- `usePageSync(pageId)` — realtime updates
+- `useMediaUpload()` — upload to storage
+- `useTheme()` — current theme
+
+### TESTING CHECKLIST
+
+Before deploying:
+1. [ ] Create new page `/edit/test-123`
+2. [ ] Add blocks via Puck visual editor
+3. [ ] Test AI block generation (AIPanel)
+4. [ ] Test AI full page generation
+5. [ ] Save page (PUT /api/pages/[slug])
+6. [ ] Publish page
+7. [ ] View public page (should resolve external data)
+8. [ ] Restore from version history
+9. [ ] Upload image to media
+10. [ ] Test on mobile (responsive)
+
+### COMMON MISTAKES TO AVOID
+
+❌ Passing `data={{}}` to PuckEditor
+✅ Load from server: `await getPageBySlug(slug)`
+
+❌ Fetching external data inside block render
+✅ Use `resolveData` callback in config
+
+❌ Accepting string for component type in GenKit
+✅ Use `z.enum(AVAILABLE_BLOCKS)`
+
+❌ Not validating AI output before dispatch
+✅ Always `safeParse()` then check
+
+❌ Forgetting RLS on new tables
+✅ `ALTER TABLE x ENABLE ROW LEVEL SECURITY` + policies
+
+❌ Hardcoding database credentials
+✅ Use env variables only
+
+---
+
+**This ruleset ensures consistency, prevents data-loading bugs, and maintains security across the entire system.**

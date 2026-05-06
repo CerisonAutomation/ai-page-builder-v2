@@ -1,0 +1,192 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ISSUES BY SEVERITY — AI Page Builder V2                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          🔴 CRITICAL ISSUES (13)                              │
+│                                                                               │
+│  Must fix BEFORE deploying to production                                     │
+│  Impact: Silent failures, crashes, security issues                           │
+│  Time to fix: 2-3 hours                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+1. ❌ Unsafe Type Assertions (HIGH) — 3 locations
+   └─ lib/utils/logger.ts:118 — (error as any).code
+   └─ components/editor/AIPanel.tsx:116 — catch (e: any)
+   └─ app/api/pages/[slug]/route.ts:109 — catch (error: any)
+
+2. ❌ Missing Error Handling (HIGH) — 4 locations
+   └─ components/editor/AIPanel.tsx:64-85 — dispatch without validation
+   └─ components/editor/PuckEditor.tsx:47-71 — JSON parse no try-catch
+   └─ lib/genkit/flows/generatePage.ts:106 — parse() not safeParse()
+   └─ app/api/pages/[slug]/route.ts:33 — z.any() in schema
+
+3. ❌ Unguarded State Access (HIGH) — 3 locations
+   └─ components/editor/PuckEditor.tsx:110 — data.root.props without guard
+   └─ lib/genkit/flows/generateBlock.ts:39 — unsafe optional chaining
+   └─ app/api/media/upload/route.ts:24 — no null check on formData.get()
+
+4. ❌ Invalid Zod Validation (HIGH) — 1 location
+   └─ app/api/pages/[slug]/route.ts:22-34 — type: z.string() not enum
+
+5. ❌ Error Handling in Routes (HIGH) — 2 locations
+   └─ app/api/pages/[slug]/route.ts:109 — unsafe error property access
+   └─ app/api/media/[id]/route.ts:30 — unsafe error message access
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          🟡 HIGH PRIORITY (8)                                │
+│                                                                               │
+│  Fix this week                                                               │
+│  Impact: Code quality, maintainability, logging                              │
+│  Time to fix: 2-3 hours                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+6. ⚠️  Console Statements (MEDIUM) — 13 occurrences
+   └─ lib/db/pages.ts:32 — console.error() [getPageBySlug]
+   └─ lib/db/media.ts:97 — console.error() [uploadMedia]
+   └─ lib/db/media.ts:132 — console.error() [deleteMedia]
+   └─ lib/db/media.ts:167 — console.error() [listMedia]
+   └─ lib/db/media.ts:199 — console.error() [getSignedUrl]
+   └─ lib/genkit/flows/generateBlock.ts:97 — console.error()
+   └─ lib/genkit/flows/generatePage.ts:101, 114, 123 — console.warn/error
+   └─ components/editor/PuckEditor.tsx:73 — console.error()
+   └─ app/api/pages/[slug]/route.ts:53, 149 — console.error()
+   └─ app/(frontend)/[slug]/page.tsx:35 — console.error()
+   └─ app/api/media/upload/route.ts:35 — console.error()
+
+7. ⚠️  Type Safety Issues (MEDIUM) — 6 occurrences
+   └─ Missing proper error type guards
+   └─ Unsafe property access without null checks
+   └─ Missing validation on API inputs
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        🟠 MEDIUM PRIORITY (18)                               │
+│                                                                               │
+│  Fix soon (next 1-2 weeks)                                                   │
+│  Impact: Performance, code cleanliness, UX                                   │
+│  Time to fix: 2-3 hours                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+8. 🔧 Inefficient Queries (MEDIUM) — 3 locations
+   └─ lib/db/pages.ts:180 — count: "exact" (expensive)
+   └─ lib/db/pages.ts:178 — select * (should select columns)
+   └─ lib/db/media.ts:146 — select * (should select columns)
+   Impact: Database load, slow queries
+
+9. 💀 Dead Code (LOW) — 1 major block
+   └─ components/editor/PuckEditor.tsx:84-94 — unused useEffect
+   Impact: Confusion, maintainability
+
+10. 🎨 Dynamic Tailwind Classes (MEDIUM) — 2 locations
+    └─ lib/puck/config.ts:227 — grid-cols-${num}
+    └─ lib/puck/config.ts:358 — gap-${num}
+    Impact: Classes won't be purged, larger CSS bundle
+
+11. 📦 Missing Component Initialization (HIGH) — 1 location
+    └─ components/editor/MediaPanel.tsx — loadMedia never called
+    Impact: Media list never loads
+
+12. 🔌 Best Practices (MEDIUM) — 5 violations
+    └─ Missing input validation in some places
+    └─ Missing error boundaries for Puck
+    └─ No slug format validation
+    └─ Missing rate limiting
+    └─ Inconsistent error response formats
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          🟢 LOW PRIORITY (8)                                 │
+│                                                                               │
+│  Nice to have                                                                │
+│  Impact: Polish, optional features                                           │
+│  Time to fix: 1-2 hours                                                      │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+13. 📊 Missing Observability (LOW)
+    └─ No error boundaries
+    └─ No rate limiting
+    └─ No monitoring hooks
+
+14. 📝 Documentation (LOW)
+    └─ Some complex flows could use more comments
+    └─ API response formats could be documented
+
+15. 🗂️  Code Organization (LOW)
+    └─ No significant issues
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                           FIX PRIORITY MATRIX
+
+          IMPACT
+            ▲
+            │    ▓▓▓ CRITICAL      ░░░ MEDIUM       ░░░ LOW
+            │    ▓█████▓           ░█████░          ░█████░
+            │    ▓█████▓           ░█████░          ░░░░░░░
+       HIGH │    ▓█████▓ (8 items)  ░█████░ (11)     
+            │    ▓█████▓           ░█████░
+            │    
+       MED  │                       ░█████░ (7 items)
+            │    
+       LOW  │                                        ░█████░ (8)
+            │
+            └─────────────────────────────────────────────────────►
+                          TIME TO FIX
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                         EFFORT BREAKDOWN
+
+Phase 1: CRITICAL          2-3 hours
+  ├─ Fix any types               30 min
+  ├─ Fix error handling           45 min
+  ├─ Replace console.*            30 min
+  ├─ Fix Zod validation           30 min
+  └─ Fix state guards             15 min
+
+Phase 2: IMPORTANT         2 hours
+  ├─ Optimize queries             30 min
+  ├─ Fix Tailwind classes         30 min
+  ├─ Add useEffect call           15 min
+  ├─ Remove dead code             15 min
+  └─ Add indices to DB            30 min
+
+Phase 3: POLISH            1-2 hours
+  ├─ Add error boundaries         30 min
+  ├─ Add rate limiting            30 min
+  ├─ Testing & validation         30 min
+  └─ Documentation                15 min
+
+                    TOTAL: 6-8 HOURS
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                      DEPLOYMENT READINESS
+
+Current Status: 🟡 YELLOW
+├─ Core functionality: ✅ Works
+├─ Type safety: ❌ 13 violations
+├─ Error handling: ❌ 8 gaps
+├─ Code quality: ⚠️  13 console statements
+├─ Performance: ⚠️  3 inefficient queries
+├─ Security: ✅ Good (with fixes)
+└─ Documentation: ✅ Good
+
+Recommendation: Fix Phase 1 before production, Phase 2-3 in follow-up
+
+═══════════════════════════════════════════════════════════════════════════════
+
+                        RISK ASSESSMENT
+
+Risk Level: MEDIUM (manageable with fixes)
+
+Highest Risks:
+1. Type safety violations could cause runtime crashes (5 places)
+2. Missing error handling in critical flows (4 places)
+3. Unguarded state access could crash editor (3 places)
+
+Lowest Risks:
+1. Dead code (doesn't hurt, just confusing)
+2. Console statements (visual noise only)
+3. Performance issues (system works, just slower)
+
+═══════════════════════════════════════════════════════════════════════════════
