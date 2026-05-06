@@ -1,12 +1,14 @@
 /**
  * Public Page Render
  * ✅ Server-side resolveAllData for fresh external data
+ * ✅ Theme tokens injected via ThemeProvider
  */
 
 import { Render, resolveAllData } from "@measured/puck";
 import { notFound } from "next/navigation";
 import { getPageBySlug } from "@/lib/db/pages";
 import { puckConfig } from "@/lib/puck/config";
+import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 import { logger } from "@/lib/utils/logger";
 
 interface PublicPageProps {
@@ -27,18 +29,22 @@ export default async function PublicPage({ params }: PublicPageProps) {
     const resolvedData = await resolveAllData(page.data, puckConfig);
 
     return (
-      <div className="min-h-screen bg-white">
-        {/* ✅ RENDER WITH RESOLVED DATA */}
-        <Render config={puckConfig} data={resolvedData} />
-      </div>
+      <ThemeProvider>
+        <div className="min-h-screen bg-white">
+          {/* ✅ RENDER WITH RESOLVED DATA */}
+          <Render config={puckConfig} data={resolvedData} />
+        </div>
+      </ThemeProvider>
     );
   } catch (error) {
     logger.error("Error rendering public page", error, { slug: params.slug });
     // Fallback: render with unresolved data
     return (
-      <div className="min-h-screen bg-white">
-        <Render config={puckConfig} data={page.data} />
-      </div>
+      <ThemeProvider>
+        <div className="min-h-screen bg-white">
+          <Render config={puckConfig} data={page.data} />
+        </div>
+      </ThemeProvider>
     );
   }
 }
@@ -67,9 +73,20 @@ export async function generateMetadata({ params }: PublicPageProps) {
 
 // ✅ STATIC GENERATION (for published pages)
 export async function generateStaticParams() {
-  // TODO: Fetch all published pages and return slugs
-  // This enables static site generation for better performance
-  return [];
+  try {
+    const { createAdminClient } = await import("@/lib/db/supabase");
+    const supabase = createAdminClient();
+    const { data: pages } = await supabase
+      .from("pages")
+      .select("slug")
+      .eq("published", true)
+      .is("deleted_at", null);
+
+    return (pages ?? []).map((p) => ({ slug: p.slug }));
+  } catch {
+    // Fail gracefully — ISR will handle individual pages on-demand
+    return [];
+  }
 }
 
 // ✅ REVALIDATE (ISR — regenerate every 60 seconds)

@@ -6,7 +6,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { usePuck } from "@measured/puck";
 import type { Data } from "@measured/puck";
 import { puckConfig, emptyPage } from "@/lib/puck/config";
@@ -21,7 +21,12 @@ interface AIEnhancedPanelProps {
 }
 
 export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
-  const { dispatch } = usePuck();
+  const { dispatch, state } = usePuck();
+  // Use a ref to avoid stale closure in handleGenerate without adding state.data
+  // to the useCallback dependency array (which would cause frequent recreation).
+  const stateDataRef = useRef(state.data);
+  stateDataRef.current = state.data;
+
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<"block" | "page">("block");
   const [loading, setLoading] = useState(false);
@@ -75,13 +80,13 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
           destinationZone: "content",
         });
 
-        // ✅ SET PROPS
+        // ✅ SET PROPS — use stateDataRef to avoid stale closure
         dispatch({
           type: "SET_DATA",
           data: {
-            ...dispatch.state.data,
+            ...stateDataRef.current,
             content: [
-              ...dispatch.state.data.content,
+              ...stateDataRef.current.content,
               {
                 type: output.componentName,
                 props: output.props,
