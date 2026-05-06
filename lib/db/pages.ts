@@ -1,308 +1,336 @@
 /**
- * Page Database Operations
- * ✅ CRUD with type safety, error handling, audit logging
+ * Pages Database Layer
+ * ✅ Full CRUD + search + filtering with RLS
  */
 
-import { createServerSupabaseClient, createAdminClient } from "./supabase";
-import { logger } from "@/lib/utils/logger";
-import type { Data } from "@measured/puck";
-import type { Database } from "@/types/supabase";
+import { createServerSupabaseClient } from "./supabase";
+import { z } from "zod";
 
-type Page = Database["public"]["Tables"]["pages"]["Row"];
-type PageVersion = Database["public"]["Tables"]["page_versions"]["Row"];
+// Schema for page data
+export const PageSchema = z.object({
+  id: z.string(),
+  slug: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  data: z.object({}).passthrough(),
+  published: z.boolean(),
+  user_id: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  deleted_at: z.string().nullable(),
+});
 
-// ✅ GET PAGE BY SLUG (public, no auth required for published pages)
-export async function getPageBySlug(slug: string): Promise<Page | null> {
-  try {
-    const supabase = await createServerSupabaseClient();
+export const SavePageSchema = z.object({
+  slug: z.string().min(1).max(255),
+  title: z.string().min(1).max(255),
+  description: z.string().max(1000).optional(),
+  data: z.object({}).passthrough(),
+  published: z.boolean().default(false),
+});
 
-    const { data, error } = await supabase
-      .from("pages")
-      .select("*")
-      .eq("slug", slug)
-      .is("deleted_at", null)
-      .single();
+export type Page = z.infer<typeof PageSchema>;
+export type SavePageInput = z.infer<typeof SavePageSchema>;
 
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 = no rows found (expected)
-      throw error;
-    }
+/**
+ * List all pages for a user with pagination
+ */
+export async function listPages(
+  userId: string,
+  options?: { limit?: number; offset?: number; search?: string; published?: boolean }
+) {
+  const supabase = await createServerSupabaseClient();
+  const limit = options?.limit ?? 20;
+  const offset = options?.offset ?? 0;
+  const search = options?.search?.trim();
+  const published = options?.published;
 
-    return data ?? null;
-  } catch (error) {
-    logger.error("Failed to fetch page by slug", error, { slug });
-    return null;
+  let query = supabase
+    .from("pages")
+    .select("*", { count: "exact" })
+    .eq("user_id", userId)
+    .is("deleted_at", null);
+
+  if (published !== undefined) {
+    query = query.eq("published", published);
   }
+
+  if (search) {
+    query = query.or(
+      `title.ilike.%${search}%,description.ilike.%${search}%,slug.ilike.%${search}%`
+    );
+  }
+
+  const { data: pages, error, count } = await query
+    .order("updated_at", { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  return { pages: (pages ?? []) as Page[], total: count ?? 0 };
 }
 
-// ✅ CREATE PAGE (auth required)
-export async function createPage(
-  slug: string,
-  title: string,
-  data: Data,
-  userId: string
-): Promise<Page> {
+/**
+ * Get single page by slug
+ */
+export async function getPageBySlug(slug: string, userId?: string) {
   const supabase = await createServerSupabaseClient();
 
-  const { data: page, error } = await supabase
+  let query = supabase
+    .from("pages")
+    .select("*")
+    .eq("slug", slug)
+    .is("deleted_at", null)
+    .single();
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    if (error.code === "PGRST116") return null; // Not found
+    throw error;
+  }
+
+  return data as Page | null;
+}
+
+/**
+ * Get page by ID
+ */
+export async function getPageById(pageId: string, userId?: string) {
+  const supabase = await createServerSupabaseClient();
+
+  let query = supabase
+    .from("pages")
+    .select("*")
+    .eq("id", pageId)
+    .is("deleted_at", null)
+    .single();
+
+  if (userId) {
+    query = query.eq("user_id", userId);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    if (error.code === "PGRST116") return null;
+    throw error;
+  }
+
+  return data as Page | null;
+}
+
+/**
+ * Create new page
+ */
+export async function createPage(input: SavePageInput & { user_id: string }) {
+  const supabase = await createServerSupabaseClient();
+
+  // Validate slug is unique
+  const existing = await getPageBySlug(input.slug, input.user_id);
+  if (existing) {
+    throw new Error(`Slug "${input.slug}" already exists`);
+  }
+
+  const { data, error } = await supabase
     .from("pages")
     .insert([
       {
-        slug,
-        title,
-        data,
-        created_by: userId,
-        updated_by: userId,
+        slug: input.slug,
+        title: input.title,
+        description: input.description ?? null,
+        data: input.data,
+        published: input.published ?? false,
+        user_id: input.user_id,
       },
     ])
     .select()
     .single();
 
   if (error) throw error;
-  return page;
+  return data as Page;
 }
 
-// ✅ UPDATE PAGE (owner only)
+/**
+ * Update page
+ */
 export async function updatePage(
-  slug: string,
-  updates: { title?: string; description?: string; data?: Data },
-  userId: string
-): Promise<Page> {
+  pageId: string,
+  userId: string,
+  updates: Partial<SavePageInput>
+) {
   const supabase = await createServerSupabaseClient();
 
-  // ✅ Verify ownership via RLS (user can only update own pages)
-  const { data: page, error: getError } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("slug", slug)
-    .is("deleted_at", null)
-    .single();
-
-  if (getError) throw getError;
-  if (!page) throw new Error("Page not found");
-  if (page.created_by !== userId) throw new Error("Unauthorized");
-
-  // ✅ Create version snapshot before update
-  if (updates.data) {
-    await supabase.from("page_versions").insert([
-      {
-        page_id: page.id,
-        data: page.data,
-        label: `Auto-saved at ${new Date().toISOString()}`,
-        created_by: userId,
-      },
-    ]);
+  // Verify ownership
+  const page = await getPageById(pageId, userId);
+  if (!page) {
+    throw new Error("Page not found or access denied");
   }
 
-  const { data: updated, error: updateError } = await supabase
+  // Check slug uniqueness if changing
+  if (updates.slug && updates.slug !== page.slug) {
+    const existing = await getPageBySlug(updates.slug, userId);
+    if (existing) {
+      throw new Error(`Slug "${updates.slug}" already exists`);
+    }
+  }
+
+  const { data, error } = await supabase
     .from("pages")
     .update({
-      ...updates,
-      updated_by: userId,
+      ...(updates.slug && { slug: updates.slug }),
+      ...(updates.title && { title: updates.title }),
+      ...(updates.description !== undefined && { description: updates.description }),
+      ...(updates.data && { data: updates.data }),
+      ...(updates.published !== undefined && { published: updates.published }),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", page.id)
+    .eq("id", pageId)
+    .eq("user_id", userId)
     .select()
     .single();
 
-  if (updateError) throw updateError;
-  return updated;
+  if (error) throw error;
+  return data as Page;
 }
 
-// ✅ PUBLISH PAGE (owner only)
-export async function publishPage(
-  slug: string,
-  userId: string
-): Promise<Page> {
-  const supabase = await createServerSupabaseClient();
-
-  const { data: page, error: getError } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("slug", slug)
-    .is("deleted_at", null)
-    .single();
-
-  if (getError) throw getError;
-  if (!page) throw new Error("Page not found");
-  if (page.created_by !== userId) throw new Error("Unauthorized");
-
-  const { data: updated, error: updateError } = await supabase
-    .from("pages")
-    .update({
-      published: true,
-      published_at: new Date().toISOString(),
-      updated_by: userId,
-    })
-    .eq("id", page.id)
-    .select()
-    .single();
-
-  if (updateError) throw updateError;
-  return updated;
+/**
+ * Publish page (make public)
+ */
+export async function publishPage(pageId: string, userId: string) {
+  return updatePage(pageId, userId, { published: true });
 }
 
-// ✅ DELETE PAGE (soft delete, owner only)
-export async function deletePage(slug: string, userId: string): Promise<void> {
+/**
+ * Unpublish page (make private)
+ */
+export async function unpublishPage(pageId: string, userId: string) {
+  return updatePage(pageId, userId, { published: false });
+}
+
+/**
+ * Soft delete page (mark deleted_at)
+ */
+export async function deletePage(pageId: string, userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  const { data: page, error: getError } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("slug", slug)
-    .is("deleted_at", null)
-    .single();
-
-  if (getError) throw getError;
-  if (!page) throw new Error("Page not found");
-  if (page.created_by !== userId) throw new Error("Unauthorized");
-
-  const { error: deleteError } = await supabase
+  const { data, error } = await supabase
     .from("pages")
     .update({
       deleted_at: new Date().toISOString(),
-      updated_by: userId,
-    })
-    .eq("id", page.id);
-
-  if (deleteError) throw deleteError;
-}
-
-// ✅ LIST PAGES (paginated, owner only)
-export async function listPages(
-  userId: string,
-  limit: number = 20,
-  offset: number = 0
-): Promise<{ pages: Page[]; total: number }> {
-  const supabase = await createServerSupabaseClient();
-
-  // ✅ OPTIMIZATION: Only fetch needed columns (performance improvement)
-  const { data: pages, error: dataError } = await supabase
-    .from("pages")
-    .select(
-      "id,slug,title,description,published,created_at,updated_at,created_by"
-    )
-    .eq("created_by", userId)
-    .is("deleted_at", null)
-    .order("updated_at", { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (dataError) throw dataError;
-
-  // ✅ Return estimated count (faster than exact count for large tables)
-  return { pages: pages ?? [], total: pages?.length ?? 0 };
-}
-
-// ✅ GET PAGE VERSIONS (history, owner only)
-export async function getPageVersions(
-  pageId: string,
-  userId: string,
-  limit: number = 10
-): Promise<PageVersion[]> {
-  const supabase = await createServerSupabaseClient();
-
-  // ✅ Verify page ownership
-  const { data: page, error: pageError } = await supabase
-    .from("pages")
-    .select("id")
-    .eq("id", pageId)
-    .single();
-
-  if (pageError) throw pageError;
-  if (!page) throw new Error("Page not found");
-
-  const { data: versions, error: versionError } = await supabase
-    .from("page_versions")
-    .select("*")
-    .eq("page_id", pageId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (versionError) throw versionError;
-  return versions ?? [];
-}
-
-// ✅ RESTORE PAGE VERSION (owner only)
-export async function restorePageVersion(
-  pageId: string,
-  versionId: string,
-  userId: string
-): Promise<Page> {
-  const supabase = await createServerSupabaseClient();
-
-  // ✅ Get version
-  const { data: version, error: versionError } = await supabase
-    .from("page_versions")
-    .select("*")
-    .eq("id", versionId)
-    .single();
-
-  if (versionError) throw versionError;
-  if (!version) throw new Error("Version not found");
-
-  // ✅ Verify page ownership
-  const { data: page, error: pageError } = await supabase
-    .from("pages")
-    .select("*")
-    .eq("id", pageId)
-    .single();
-
-  if (pageError) throw pageError;
-  if (!page) throw new Error("Page not found");
-  if (page.created_by !== userId) throw new Error("Unauthorized");
-
-  // ✅ Create new version from current before restoring
-  await supabase.from("page_versions").insert([
-    {
-      page_id: pageId,
-      data: page.data,
-      label: `Before restore from v${versionId}`,
-      created_by: userId,
-    },
-  ]);
-
-  // ✅ Restore
-  const { data: restored, error: restoreError } = await supabase
-    .from("pages")
-    .update({
-      data: version.data,
-      updated_by: userId,
       updated_at: new Date().toISOString(),
     })
     .eq("id", pageId)
+    .eq("user_id", userId)
     .select()
     .single();
 
-  if (restoreError) throw restoreError;
-  return restored;
+  if (error) throw error;
+  return data as Page;
 }
 
-// ✅ COUNT PUBLISHED PAGES (for public site)
-export async function countPublishedPages(): Promise<number> {
+/**
+ * Permanently delete page (hard delete)
+ */
+export async function hardDeletePage(pageId: string, userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  const { count, error } = await supabase
+  const { error } = await supabase
     .from("pages")
-    .select("*", { count: "exact", head: true })
-    .eq("published", true)
-    .is("deleted_at", null);
+    .delete()
+    .eq("id", pageId)
+    .eq("user_id", userId);
 
   if (error) throw error;
-  return count ?? 0;
 }
 
-// ✅ GET FEATURED PAGES (for homepage)
-export async function getFeaturedPages(limit: number = 5): Promise<Page[]> {
-  const supabase = await createServerSupabaseClient();
+/**
+ * Search pages by title/description with fuzzy matching
+ */
+export async function searchPages(userId: string, query: string) {
+  if (!query.trim()) {
+    return { pages: [], total: 0 };
+  }
 
-  const { data: pages, error } = await supabase
+  // Use Postgres ilike for case-insensitive matching
+  const supabase = await createServerSupabaseClient();
+  const searchTerm = `%${query}%`;
+
+  const { data: pages, error, count } = await supabase
     .from("pages")
-    .select("*")
-    .eq("published", true)
+    .select("*", { count: "exact" })
+    .eq("user_id", userId)
     .is("deleted_at", null)
-    .order("updated_at", { ascending: false })
-    .limit(limit);
+    .or(
+      `title.ilike.${searchTerm},description.ilike.${searchTerm},slug.ilike.${searchTerm}`
+    )
+    .order("updated_at", { ascending: false });
 
   if (error) throw error;
-  return pages ?? [];
+  return { pages: (pages ?? []) as Page[], total: count ?? 0 };
+}
+
+/**
+ * Get page with versions
+ */
+export async function getPageWithVersions(pageId: string, userId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const { data: page, error: pageError } = await supabase
+    .from("pages")
+    .select(
+      `
+      *,
+      page_versions (
+        id,
+        label,
+        created_at,
+        user_id
+      )
+    `
+    )
+    .eq("id", pageId)
+    .eq("user_id", userId)
+    .is("deleted_at", null)
+    .single();
+
+  if (pageError) throw pageError;
+
+  return page;
+}
+
+/**
+ * Count pages by status
+ */
+export async function countPages(userId: string) {
+  const supabase = await createServerSupabaseClient();
+
+  const [
+    { count: total },
+    { count: published },
+    { count: draft },
+  ] = await Promise.all([
+    supabase
+      .from("pages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .is("deleted_at", null),
+    supabase
+      .from("pages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("published", true)
+      .is("deleted_at", null),
+    supabase
+      .from("pages")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("published", false)
+      .is("deleted_at", null),
+  ]);
+
+  return { total: total ?? 0, published: published ?? 0, draft: draft ?? 0 };
 }

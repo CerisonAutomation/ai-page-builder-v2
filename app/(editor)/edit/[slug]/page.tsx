@@ -52,7 +52,7 @@ export default async function EditPage({ params }: EditPageProps) {
     const page = await getPageBySlug(params.slug);
 
     // ✅ STEP 2: Use saved data or empty scaffold
-    const initialData = page?.data ?? emptyPage;
+    const initialData = (page?.data as any) ?? emptyPage;
     const pageId = page?.id ?? null;
 
     // ✅ STEP 3: Pass to client component with pre-loaded data
@@ -96,4 +96,5 @@ export async function generateMetadata({
 }
 
 // ✅ REVALIDATE (cache for 60s, then revalidate)
-export const revalidate = 60;
+// ✅ P2-2: Force dynamic to always get fresh data
+export const dynamic = "force-dynamic";

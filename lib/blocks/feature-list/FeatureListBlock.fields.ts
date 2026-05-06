@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const featureListFields: FieldDef = {
+export const featureListFields= {
   features: {
     type: "array",
     label: "Features",

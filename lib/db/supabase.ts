@@ -1,66 +1,93 @@
 /**
- * Supabase Client Configuration
- * ✅ Server-safe clients for DB + Auth + Storage
+ * Supabase Client Factory
+ * ✅ Server-side and client-side client creation with auth
  */
 
 import { createClient } from "@supabase/supabase-js";
-import { createClient as createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
-import type { Database } from "@/types/supabase";
 
-// ✅ PUBLIC CLIENT (browser-safe, use anon key)
-export function createBrowserClient() {
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
+// Singleton instances
+let serverClient: any = null;
+let cachedCookies: any = null;
 
-export const supabase = createBrowserClient();
-
-// ✅ SERVER CLIENT (route handlers, use anon key with cookies)
+/**
+ * Create server-side Supabase client
+ * Uses cookies from Next.js for auth tokens
+ */
 export async function createServerSupabaseClient() {
-  const cookieStore = await cookies();
+  if (!serverClient) {
+    // Cookies handled by middleware
+    cachedCookies = cookieStore;
 
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          } catch {
-            // Handle cookie set errors
-          }
-        },
-      },
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing Supabase environment variables");
     }
-  );
-}
 
-// ✅ ADMIN CLIENT (server-only, use secret key for RLS bypass)
-export function createAdminClient() {
-  if (!process.env.SUPABASE_SECRET_KEY) {
-    throw new Error("SUPABASE_SECRET_KEY not configured");
-  }
-
-  return createClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY,
-    {
+    serverClient = createClient(supabaseUrl, supabaseKey, {
       auth: {
-        autoRefreshToken: false,
         persistSession: false,
       },
-    }
-  );
+    });
+  }
+
+  return serverClient;
 }
 
-// ✅ DEFAULT BROWSER CLIENT
-export default supabase;
+/**
+ * Create client-side Supabase client
+ * For use in browser/client components
+ */
+export function createBrowserSupabaseClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Missing public Supabase environment variables");
+  }
+
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+/**
+ * Get authenticated session from server
+ */
+export async function getServerSession() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session;
+}
+
+/**
+ * Get current user from server
+ */
+export async function getServerUser() {
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}
+
+/**
+ * Create admin Supabase client (for server-side operations with elevated privileges)
+ * Uses service role key for unrestricted access
+ */
+export function createAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error("Missing Supabase environment variables for admin client");
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}

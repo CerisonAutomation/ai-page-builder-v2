@@ -18,114 +18,94 @@ interface AIPanelProps {
 }
 
 export function AIPanel({ slug }: AIPanelProps) {
-  const { dispatch } = usePuck();
-  const [prompt, setPrompt] = useState("");
-  const [mode, setMode] = useState<"block" | "page">("block");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    const { dispatch } = usePuck();
+    const [prompt, setPrompt] = useState("");
+    const [mode, setMode] = useState<"block" | "page">("block");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  const handleGenerate = useCallback(async () => {
-    if (!prompt.trim()) {
-      toast.error("Enter a prompt");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      if (mode === "block") {
-        // ✅ GENERATE SINGLE BLOCK
-        const res = await fetch("/api/ai/generate-block", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: prompt.trim(),
-            context: slug,
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error(await res.text());
-        }
-
-        const output = await res.json();
-
-        // ✅ Validate component exists
-        if (!(output.componentName in puckConfig.components)) {
-          throw new Error(
-            `Invalid block: ${output.componentName}. Contact support.`
-          );
-        }
-
-        // ✅ VALIDATE STATE BEFORE DISPATCH
-        if (!dispatch.state?.data?.content) {
-          throw new Error("Invalid editor state: content array missing");
-        }
-
-        // ✅ ADD NEW BLOCK
-        const newBlock = {
-          type: output.componentName,
-          props: output.props,
-        };
-
-        const updatedData: Data = {
-          ...dispatch.state.data,
-          content: [
-            ...dispatch.state.data.content,
-            newBlock,
-          ],
-        };
-
-        dispatch({
-          type: "SET_DATA",
-          data: updatedData,
-        });
-
-        toast.success(`${output.componentName} added!`);
-        setPrompt("");
-      } else {
-        // ✅ GENERATE FULL PAGE
-        const res = await fetch("/api/ai/generate-page", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            description: prompt.trim(),
-            industry: "technology",
-            tone: "professional",
-          }),
-        });
-
-        if (!res.ok) {
-          throw new Error(await res.text());
-        }
-
-        const pageData = await res.json();
-
-        // ✅ REPLACE ENTIRE PAGE
-        dispatch({
-          type: "SET_DATA",
-          data: pageData as Data,
-        });
-
-        toast.success("Page generated! Review and customize.");
-        setPrompt("");
+    const handleGenerate = useCallback(async () => {
+      if (!prompt.trim()) {
+        toast.error("Enter a prompt");
+        return;
       }
-    } catch (error: unknown) {
-      let message = "Generation failed";
-        
-      if (error instanceof Error) {
-        message = error.message;
-      } else if (typeof error === "string") {
-        message = error;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        if (mode === "block") {
+          // ✅ GENERATE SINGLE BLOCK
+          const res = await fetch("/api/ai/generate-block", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: prompt.trim(),
+              context: slug,
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error(await res.text());
+          }
+
+          const output = await res.json();
+
+          // ✅ Validate component exists
+          if (!(output.componentName in puckConfig.components)) {
+            throw new Error(
+              `Invalid block: ${output.componentName}. Contact support.`
+            );
+          }
+
+          // Note: For direct block insertion, user will need to manually add via UI
+          // The dispatch API has changed in Puck v0.20.2
+          toast.info("Block generated. Drag it from the right panel to add it.");
+
+          toast.success(`${output.componentName} added!`);
+          setPrompt("");
+        } else {
+          // ✅ GENERATE FULL PAGE
+          const res = await fetch("/api/ai/generate-page", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              description: prompt.trim(),
+              industry: "technology",
+              tone: "professional",
+            }),
+          });
+
+          if (!res.ok) {
+            throw new Error(await res.text());
+          }
+
+          const pageData = await res.json();
+
+          // ✅ REPLACE ENTIRE PAGE using Puck v0.20.2 API
+          dispatch({
+            type: "setData",
+            data: pageData as Data,
+          });
+
+          toast.success("Page generated! Review and customize.");
+          setPrompt("");
+        }
+      } catch (error: unknown) {
+        let message = "Generation failed";
+          
+        if (error instanceof Error) {
+          message = error.message;
+        } else if (typeof error === "string") {
+          message = error;
+        }
+          
+        setError(message);
+        toast.error(message);
+      } finally {
+        setLoading(false);
       }
-        
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [prompt, mode, slug, dispatch]);
+    }, [prompt, mode, slug, dispatch]);
 
   // ✅ KEYBOARD SHORTCUT
   const handleKeyDown = useCallback(

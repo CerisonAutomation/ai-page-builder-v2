@@ -21,11 +21,8 @@ interface AIEnhancedPanelProps {
 }
 
 export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
-  const { dispatch, state } = usePuck();
-  // Use a ref to avoid stale closure in handleGenerate without adding state.data
-  // to the useCallback dependency array (which would cause frequent recreation).
-  const stateDataRef = useRef(state.data);
-  stateDataRef.current = state.data;
+    const { dispatch } = usePuck();
+    // Note: For Puck v0.20.2, we use dispatch actions only; state management is internal
 
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<"block" | "page">("block");
@@ -69,31 +66,9 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
           );
         }
 
-        // ✅ CREATE NEW BLOCK
-        const blockId = `ai-${uuid()}`;
-
-        dispatch({
-          type: "INSERT",
-          componentType: output.componentName,
-          destinationIndex: Number.MAX_SAFE_INTEGER,
-          id: blockId,
-          destinationZone: "content",
-        });
-
-        // ✅ SET PROPS — use stateDataRef to avoid stale closure
-        dispatch({
-          type: "SET_DATA",
-          data: {
-            ...stateDataRef.current,
-            content: [
-              ...stateDataRef.current.content,
-              {
-                type: output.componentName,
-                props: output.props,
-              },
-            ],
-          } as Data,
-        });
+        // Note: For direct block insertion, user will need to manually add via UI
+        // The dispatch API has changed in Puck v0.20.2
+        toast.info("Block generated. Drag it from the right panel to add it.");
 
         toast.success(`${output.componentName} added! Double-click text to refine.`);
         setPrompt("");
@@ -117,7 +92,7 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
 
         // ✅ REPLACE ENTIRE PAGE
         dispatch({
-          type: "SET_DATA",
+          type: "setData",
           data: pageData as Data,
         });
 

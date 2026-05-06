@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const faqFields: FieldDef = {
+export const faqFields= {
   title: { type: "text", label: "Section Title (optional)" },
   items: {
     type: "array",

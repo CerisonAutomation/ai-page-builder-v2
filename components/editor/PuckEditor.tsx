@@ -50,8 +50,8 @@ export default function PuckEditor({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             slug,
-            title: data.root.props.title || title,
-            description: data.root.props.description || description,
+            title: (data.root?.props?.title as string) || title,
+            description: description,
             data,
           }),
         });
@@ -130,13 +130,7 @@ export default function PuckEditor({
 
           // ✅ TABBED SIDEBAR (useAutoSave runs inside Puck context here)
           fields: ({ children }) => (
-            <Sidebar
-              slug={slug}
-              pageId={pageId}
-              title={title}
-              description={description}
-              onSaved={() => setLastSaved(new Date())}
-            >
+            <Sidebar>
               {children}
             </Sidebar>
           ),

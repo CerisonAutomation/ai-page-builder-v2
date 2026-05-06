@@ -14,26 +14,27 @@ import {
 } from "@/lib/db/versions";
 
 export async function GET(
-  request: Request,
-  { params }: { params: { pageId: string } }
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const { data: userData } = await supabase.auth.getUser();
+    request: Request,
+    { params }: { params: Promise<{ pageId: string }> }
+  ) {
+    try {
+      const { pageId } = await params;
+      const supabase = await createServerSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
 
-    if (!userData?.user?.id) {
-      return Response.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+      if (!userData?.user?.id) {
+        return Response.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
 
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const offset = parseInt(url.searchParams.get("offset") || "0");
 
     const { versions, total } = await getVersionHistory(
-      params.pageId,
+      pageId,
       userData.user.id,
       limit,
       offset
@@ -41,7 +42,7 @@ export async function GET(
 
     return Response.json({ versions, total, limit, offset });
   } catch (error: unknown) {
-    logger.error("Failed to fetch versions", error, { pageId: params.pageId });
+    logger.error("Failed to fetch versions", error);
     let message = "Failed to fetch versions";
     let status = 500;
     if (error instanceof Error) {
@@ -56,40 +57,41 @@ export async function GET(
 }
 
 export async function PATCH(
-  request: Request,
-  { params }: { params: { pageId: string } }
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const { data: userData } = await supabase.auth.getUser();
+    request: Request,
+    { params }: { params: Promise<{ pageId: string }> }
+  ) {
+    try {
+      const { pageId } = await params;
+      const supabase = await createServerSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
 
-    if (!userData?.user?.id) {
-      return Response.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+      if (!userData?.user?.id) {
+        return Response.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+
+      const body = await request.json();
+      const { versionId, label } = body;
+
+      if (!versionId || !label) {
+        return Response.json(
+          { error: "Missing versionId or label" },
+          { status: 400 }
+        );
+      }
+
+      const version = await updateVersionLabel(
+        versionId,
+        label,
+        pageId,
+        userData.user.id
       );
-    }
 
-    const body = await request.json();
-    const { versionId, label } = body;
-
-    if (!versionId || !label) {
-      return Response.json(
-        { error: "Missing versionId or label" },
-        { status: 400 }
-      );
-    }
-
-    const version = await updateVersionLabel(
-      versionId,
-      label,
-      params.pageId,
-      userData.user.id
-    );
-
-    return Response.json({ version });
-  } catch (error: unknown) {
-    logger.error("Failed to update version", error, { pageId: params.pageId });
+      return Response.json({ version });
+    } catch (error: unknown) {
+      logger.error("Failed to update version", error);
     let message = "Failed to update version";
     let status = 500;
     if (error instanceof Error) {
@@ -104,12 +106,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
-  { params }: { params: { pageId: string } }
-) {
-  try {
-    const supabase = await createServerSupabaseClient();
-    const { data: userData } = await supabase.auth.getUser();
+    request: Request,
+    { params }: { params: Promise<{ pageId: string }> }
+  ) {
+    try {
+      const { pageId } = await params;
+      const supabase = await createServerSupabaseClient();
+      const { data: userData } = await supabase.auth.getUser();
 
     if (!userData?.user?.id) {
       return Response.json(
@@ -128,11 +131,11 @@ export async function DELETE(
       );
     }
 
-    await deleteVersion(versionId, params.pageId, userData.user.id);
+    await deleteVersion(versionId, pageId, userData.user.id);
 
     return Response.json({ success: true });
   } catch (error: unknown) {
-    logger.error("Failed to delete version", error, { pageId: params.pageId });
+    logger.error("Failed to delete version", error);
     let message = "Failed to delete version";
     let status = 500;
     if (error instanceof Error) {
@@ -144,5 +147,4 @@ export async function DELETE(
       { status }
     );
   }
-}
 }

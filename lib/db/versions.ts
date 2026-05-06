@@ -5,7 +5,7 @@
 
 import { createServerSupabaseClient } from "./supabase";
 import type { Data } from "@measured/puck";
-import type { Database } from "@/types/supabase";
+import type { Database } from "@/lib/types/supabase";
 
 type PageVersion = Database["public"]["Tables"]["page_versions"]["Row"];
 

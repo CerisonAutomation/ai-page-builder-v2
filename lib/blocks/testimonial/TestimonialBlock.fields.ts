@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const testimonialFields: FieldDef = {
+export const testimonialFields= {
   quotes: {
     type: "array",
     label: "Testimonials",

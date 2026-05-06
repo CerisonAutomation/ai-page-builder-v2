@@ -19,19 +19,19 @@ export default async function AdminPage() {
     return null;
   }
 
-  const pages = await listPages(user.id);
-  const media = await listMedia(user.id);
+  const pagesResult = await listPages(user.id);
+  const mediaResult = await listMedia(user.id);
 
   const stats = [
     {
       label: "Total Pages",
-      value: pages.length,
+      value: pagesResult.pages.length,
       icon: FileText,
       color: "bg-blue-100 text-blue-600",
     },
     {
       label: "Media Files",
-      value: media.length,
+      value: mediaResult.files.length,
       icon: Image,
       color: "bg-green-100 text-green-600",
     },
@@ -85,7 +85,7 @@ export default async function AdminPage() {
           </div>
 
           <div className="space-y-3">
-            {pages.slice(0, 5).map((page) => (
+            {pagesResult.pages.slice(0, 5).map((page) => (
               <Link
                 key={page.id}
                 href={`/edit/${page.slug}`}
@@ -98,7 +98,7 @@ export default async function AdminPage() {
                 <Calendar className="w-4 h-4 text-slate-400" />
               </Link>
             ))}
-            {pages.length === 0 && (
+            {pagesResult.pages.length === 0 && (
               <p className="text-sm text-slate-600 py-4 text-center">No pages yet</p>
             )}
           </div>

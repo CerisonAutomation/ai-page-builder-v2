@@ -43,46 +43,36 @@ export class PluginLogger implements IPluginLogger {
 
     this.logs.push(entry);
 
-    // Keep only recent logs
     if (this.logs.length > this.maxLogs) {
       this.logs = this.logs.slice(-this.maxLogs);
     }
-
     // Console output
     const prefix = `[${level.toUpperCase()}]`;
     const timestamp = entry.timestamp.toISOString();
-    const output = data
-      ? `${timestamp} ${prefix} ${message}`, data
-      : `${timestamp} ${prefix} ${message}`;
+    const output = `${timestamp} ${prefix} ${message}`;
 
     switch (level) {
       case 'debug':
-        console.debug(output);
+        data ? console.debug(output, data) : console.debug(output);
         break;
       case 'info':
-        console.info(output);
+        data ? console.info(output, data) : console.info(output);
         break;
       case 'warn':
-        console.warn(output);
+        data ? console.warn(output, data) : console.warn(output);
         break;
       case 'error':
-        console.error(output);
+        data ? console.error(output, data) : console.error(output);
         break;
     }
   }
 
-  /**
-   * Get all logs
-   */
   getLogs(level?: LogLevel): LogEntry[] {
     return level
       ? this.logs.filter((log) => log.level === level)
       : [...this.logs];
   }
 
-  /**
-   * Clear logs
-   */
   clear(): void {
     this.logs = [];
   }

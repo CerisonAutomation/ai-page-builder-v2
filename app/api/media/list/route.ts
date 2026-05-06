@@ -26,9 +26,9 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
 
     // ✅ Fetch media
-    const media = await listMedia(user.id, limit, offset);
+    const result = await listMedia(user.id, { limit, offset });
 
-    return NextResponse.json({ media, count: media.length });
+    return NextResponse.json({ files: result.files, total: result.total });
   } catch (error: unknown) {
     logger.error("Failed to list media", error);
     return NextResponse.json(

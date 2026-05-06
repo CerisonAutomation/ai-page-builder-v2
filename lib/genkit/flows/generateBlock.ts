@@ -12,24 +12,24 @@ import { logger } from "@/lib/utils/logger";
 
 // ✅ STRICT OUTPUT SCHEMA (enum, not string)
 export const BlockOutputSchema = z.object({
-  componentName: z.enum(AVAILABLE_BLOCKS as [string, ...string[]]),
-  props: z.record(z.unknown()),
-  reasoning: z.string().optional(),
-});
+    componentName: z.enum(AVAILABLE_BLOCKS as [string, ...string[]]),
+    props: z.record(z.string(), z.unknown()),
+    reasoning: z.string().optional(),
+  });
 
 export type BlockOutput = z.infer<typeof BlockOutputSchema>;
 
 // ✅ BLOCK GENERATION FLOW
 export const generateBlockFlow = ai.defineFlow(
-  {
-    name: "generateBlock",
-    inputSchema: z.object({
-      prompt: z.string().min(3).max(500),
-      context: z.string().optional(),
-    }),
-    outputSchema: BlockOutputSchema,
-  },
-  async ({ prompt, context }) => {
+    {
+      name: "generateBlock",
+      inputSchema: z.object({
+        prompt: z.string().min(3).max(500),
+        context: z.string().optional(),
+      }) as any,
+      outputSchema: BlockOutputSchema as any,
+    } as any,
+    async ({ prompt, context }) => {
     // Build available blocks list with labels AND prop schemas
     const blockDescriptions = AVAILABLE_BLOCKS.map((name) => {
       const label =

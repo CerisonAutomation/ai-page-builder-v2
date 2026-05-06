@@ -22,7 +22,7 @@ export default async function MediaPage() {
         <h1 className="text-3xl font-bold text-slate-900">Media Library</h1>
         <p className="text-slate-600 mt-1">Upload and manage your images and files</p>
       </div>
-      <MediaLibrary userId={user.id} />
+      <MediaLibrary />
     </div>
   );
 }

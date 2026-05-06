@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const pricingFields: FieldDef = {
+export const pricingFields= {
   title: { type: "text", label: "Section Title" },
   plans: {
     type: "array",

@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const heroBlockFields: FieldDef = {
+export const heroBlockFields= {
   headline: { type: "text", label: "Headline" },
   subheadline: { type: "textarea", label: "Subheadline" },
   ctaLabel: { type: "text", label: "CTA Button Text" },

@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const galleryFields: FieldDef = {
+export const galleryFields= {
   images: {
     type: "array",
     label: "Images",

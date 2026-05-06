@@ -32,13 +32,13 @@ export function GalleryBlock(props: AllBlockProps["GalleryBlock"]) {
     <div className="w-full py-16 px-4">
       <div className={`grid ${colsClass} ${gapClass}`}>
         {props.images.map((img, i) => (
-          <img
-            key={i}
-            src={img}
-            alt={`Gallery image ${i + 1}`}
-            className="w-full h-64 object-cover rounded-lg"
-          />
-        ))}
+            <img
+              key={i}
+              src={img}
+              alt={`Gallery image ${i + 1}`}
+              className="w-full h-64 object-cover rounded-lg"
+            />
+          ))}
       </div>
     </div>
   );

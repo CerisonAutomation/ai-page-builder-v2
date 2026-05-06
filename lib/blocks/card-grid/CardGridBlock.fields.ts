@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const cardGridFields: FieldDef = {
+export const cardGridFields= {
   title: { type: "text", label: "Section Title" },
   columns: { type: "number", label: "Columns", min: 1, max: 4 },
   cards: {

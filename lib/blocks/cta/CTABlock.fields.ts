@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const ctaFields: FieldDef = {
+export const ctaFields= {
   headline: { type: "text", label: "Headline" },
   body: { type: "textarea", label: "Body" },
   primaryCta: { type: "text", label: "Primary Button Text" },

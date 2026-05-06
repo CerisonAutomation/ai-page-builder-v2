@@ -36,7 +36,7 @@ export const blockSchemaMap: Record<string, z.ZodTypeAny> = {
 type ZodCheck = { kind: string; value?: number };
 
 function getChecks(schema: z.ZodString | z.ZodNumber): ZodCheck[] {
-  return (schema._def.checks ?? []) as ZodCheck[];
+  return ((schema._def.checks ?? []) as unknown) as ZodCheck[];
 }
 
 function zodToPromptString(schema: z.ZodTypeAny, indent = 0): string {
@@ -51,11 +51,11 @@ function zodToPromptString(schema: z.ZodTypeAny, indent = 0): string {
   }
 
   if (schema instanceof z.ZodArray) {
-    return `[${zodToPromptString(schema.element, indent)}]`;
+    return `[${zodToPromptString((schema.element as unknown) as z.ZodTypeAny, indent)}]`;
   }
 
   if (schema instanceof z.ZodOptional) {
-    return `${zodToPromptString(schema.unwrap(), indent)} (optional)`;
+    return `${zodToPromptString((schema.unwrap() as unknown) as z.ZodTypeAny, indent)} (optional)`;
   }
 
   if (schema instanceof z.ZodString) {

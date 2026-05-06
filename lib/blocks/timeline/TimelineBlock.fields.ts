@@ -1,7 +1,6 @@
-import type { FieldDef } from "@measured/puck";
 import type { AllBlockProps } from "../types";
 
-export const timelineFields: FieldDef = {
+export const timelineFields= {
   events: {
     type: "array",
     label: "Events",
