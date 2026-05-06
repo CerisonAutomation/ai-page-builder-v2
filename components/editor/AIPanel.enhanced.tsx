@@ -21,7 +21,7 @@ interface AIEnhancedPanelProps {
 }
 
 export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
-  const { dispatch } = usePuck();
+  const { dispatch, state } = usePuck();
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<"block" | "page">("block");
   const [loading, setLoading] = useState(false);
@@ -75,13 +75,13 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
           destinationZone: "content",
         });
 
-        // ✅ SET PROPS
+        // ✅ SET PROPS — use state.data (not dispatch.state.data)
         dispatch({
           type: "SET_DATA",
           data: {
-            ...dispatch.state.data,
+            ...state.data,
             content: [
-              ...dispatch.state.data.content,
+              ...state.data.content,
               {
                 type: output.componentName,
                 props: output.props,
@@ -133,7 +133,7 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [prompt, mode, slug, dispatch]);
+  }, [prompt, mode, slug, dispatch, state]);
 
   // ✅ KEYBOARD SHORTCUT
   const handleKeyDown = useCallback(

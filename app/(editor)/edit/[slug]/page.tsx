@@ -5,8 +5,9 @@
  */
 
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { getPageBySlug } from "@/lib/db/pages";
+import { createServerSupabaseClient } from "@/lib/db/supabase";
 import { emptyPage } from "@/lib/puck/config";
 import { logger } from "@/lib/utils/logger";
 import PuckEditor from "@/components/editor/PuckEditor";
@@ -36,6 +37,16 @@ interface EditPageProps {
  * Always pre-load from database
  */
 export default async function EditPage({ params }: EditPageProps) {
+  // ✅ AUTH GUARD — redirect unauthenticated users
+  const supabase = await createServerSupabaseClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   try {
     // ✅ STEP 1: Fetch page from database
     const page = await getPageBySlug(params.slug);

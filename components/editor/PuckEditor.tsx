@@ -11,7 +11,7 @@ import { Puck } from "@measured/puck";
 import "@measured/puck/puck.css";
 import type { Data } from "@measured/puck";
 import { puckConfig } from "@/lib/puck/config";
-import { AIPanel } from "@/components/editor/AIPanel";
+import { AIEnhancedPanel } from "@/components/editor/AIPanel.enhanced";
 import { MediaPanel } from "@/components/editor/MediaPanel";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
@@ -153,7 +153,7 @@ export default function PuckEditor({
 
               {/* ✅ AI PANEL AT BOTTOM */}
               <div className="border-t">
-                <AIPanel slug={slug} />
+                <AIEnhancedPanel slug={slug} />
               </div>
 
               {/* ✅ MEDIA PANEL */}

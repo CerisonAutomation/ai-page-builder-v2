@@ -67,9 +67,20 @@ export async function generateMetadata({ params }: PublicPageProps) {
 
 // ✅ STATIC GENERATION (for published pages)
 export async function generateStaticParams() {
-  // TODO: Fetch all published pages and return slugs
-  // This enables static site generation for better performance
-  return [];
+  try {
+    const { createAdminClient } = await import("@/lib/db/supabase");
+    const supabase = createAdminClient();
+    const { data: pages } = await supabase
+      .from("pages")
+      .select("slug")
+      .eq("published", true)
+      .is("deleted_at", null);
+
+    return (pages ?? []).map((p: { slug: string }) => ({ slug: p.slug }));
+  } catch {
+    // Fail gracefully — ISR will handle individual pages on-demand
+    return [];
+  }
 }
 
 // ✅ REVALIDATE (ISR — regenerate every 60 seconds)
