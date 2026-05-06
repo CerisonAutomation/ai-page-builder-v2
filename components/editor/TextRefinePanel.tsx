@@ -158,8 +158,10 @@ export function TextRefinePanel({
       // Parse fieldPath like "content[0].props.headline"
       const pathParts = fieldPath.match(/\w+/g) || [];
 
-      // FIX: deep-clone the data before mutation so React detects the change
-      const clonedData = JSON.parse(JSON.stringify(state.data));
+      // FIX: deep-clone the data before mutation so React detects the change.
+      // Use structuredClone (available in Node 17+ / modern browsers) for a
+      // correct, performant deep copy that handles all JSON-serializable values.
+      const clonedData = structuredClone(state.data);
 
       let current: any = clonedData;
 

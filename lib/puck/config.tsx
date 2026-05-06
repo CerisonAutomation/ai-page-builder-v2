@@ -349,9 +349,18 @@ const FAQBlock = (props: AllBlockProps["FAQBlock"]) => (
   </div>
 );
 
-// Helper to extract feature text from either string or Puck array-field object
+// Helper to extract feature text from either string or Puck array-field object.
+// Both formats are valid at runtime:
+//   - string[] — when data was AI-generated (AI produces plain arrays)
+//   - {feature: string}[] — when items were added via the Puck editor sidebar
 function getPricingFeatureText(f: string | { feature: string }): string {
-  return typeof f === "string" ? f : (f?.feature ?? String(f));
+  if (typeof f === "string") return f;
+  const text = f?.feature;
+  if (!text) {
+    console.warn("[PricingBlock] feature item has no 'feature' property:", f);
+    return "";
+  }
+  return text;
 }
 
 const PricingBlock = (props: AllBlockProps["PricingBlock"]) => (
@@ -419,9 +428,18 @@ const TimelineBlock = (props: AllBlockProps["TimelineBlock"]) => (
   </div>
 );
 
-// Helper to extract image URL from either a string or a Puck array-field object
+// Helper to extract image URL from either a string or a Puck array-field object.
+// Both formats are valid at runtime:
+//   - string[] — when data was AI-generated
+//   - {image: string}[] — when items were added via the Puck editor sidebar
 function getImageUrl(img: string | { image: string }): string {
-  return typeof img === "string" ? img : (img?.image ?? "");
+  if (typeof img === "string") return img;
+  const url = img?.image;
+  if (!url) {
+    console.warn("[GalleryBlock] image item has no 'image' property:", img);
+    return "";
+  }
+  return url;
 }
 
 const GalleryBlock = (props: AllBlockProps["GalleryBlock"]) => {

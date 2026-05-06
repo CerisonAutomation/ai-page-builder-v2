@@ -16,6 +16,9 @@ import { VersionControl } from "@/components/editor/VersionControl";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+/** Milliseconds to wait after the last change before autosaving. */
+const AUTOSAVE_DEBOUNCE_MS = 3000;
+
 interface PuckEditorProps {
   slug: string;
   pageId: string | null;
@@ -100,7 +103,7 @@ export default function PuckEditor({
     [slug, pageId, title, description]
   );
 
-  // Autosave: debounce saves 3 s after the last change
+  // Autosave: debounce saves AUTOSAVE_DEBOUNCE_MS after the last change
   const handleChange = useCallback(
     (data: Data) => {
       if (autoSaveTimerRef.current) {
@@ -108,7 +111,7 @@ export default function PuckEditor({
       }
       autoSaveTimerRef.current = setTimeout(() => {
         savePage(data, { silent: true });
-      }, 3000);
+      }, AUTOSAVE_DEBOUNCE_MS);
     },
     [savePage]
   );
