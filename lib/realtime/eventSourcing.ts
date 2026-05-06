@@ -7,7 +7,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createServerSupabaseClient } from '@/lib/db/supabase';
 import { nanoid } from 'nanoid';
 
 // ============================================

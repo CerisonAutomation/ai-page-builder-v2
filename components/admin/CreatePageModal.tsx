@@ -3,10 +3,11 @@
 /**
  * Create Page Modal
  * ✅ Form to create new pages with validation
+ * ✅ Accessible modal with focus management
  */
 
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { createPage } from '@/lib/db/pages';
 import { logger } from '@/lib/utils/logger';
 
@@ -25,6 +26,10 @@ export default function CreatePageModal({
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const titleRef = useRef<HTMLInputElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   // Auto-generate slug from title
   const generateSlug = (text: string) => {
@@ -90,19 +95,73 @@ export default function CreatePageModal({
     }
   };
 
+  // Focus management
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    titleRef.current?.focus();
+
+    return () => {
+      previousFocusRef.current?.focus();
+    };
+  }, []);
+
+  // Focus trap
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const modal = modalRef.current;
+      if (!modal) return;
+
+      const focusableElements = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    }
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4">
+    <div
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-page-modal-title"
+      onKeyDown={handleKeyDown}
+    >
+      <div
+        ref={modalRef}
+        className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4"
+      >
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Create New Page</h2>
+          <h2 id="create-page-modal-title" className="text-lg font-semibold text-gray-900">
+            Create New Page
+          </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="page-title" className="block text-sm font-medium text-gray-700 mb-1">
               Page Title *
             </label>
             <input
+              id="page-title"
+              ref={titleRef}
               type="text"
               value={title}
               onChange={handleTitleChange}
@@ -113,10 +172,11 @@ export default function CreatePageModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="page-slug" className="block text-sm font-medium text-gray-700 mb-1">
               URL Slug *
             </label>
             <input
+              id="page-slug"
               type="text"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
@@ -130,10 +190,11 @@ export default function CreatePageModal({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="page-description" className="block text-sm font-medium text-gray-700 mb-1">
               Description
             </label>
             <textarea
+              id="page-description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description"

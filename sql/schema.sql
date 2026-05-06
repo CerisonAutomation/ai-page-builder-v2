@@ -157,6 +157,40 @@ CREATE TABLE IF NOT EXISTS site_settings (
 INSERT INTO site_settings (id, site_name) VALUES (uuid_generate_v4(), 'My Site')
 ON CONFLICT DO NOTHING;
 
+-- ============================================
+-- ROW LEVEL SECURITY POLICIES
+-- ============================================
+
+-- RLS for site_settings: anyone can read, only admin can write
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "public_read_settings" ON site_settings
+  FOR SELECT USING (true);
+
+CREATE POLICY "admin_manage_settings" ON site_settings
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE auth.users.id = auth.uid()
+      AND auth.users.role = 'admin'::text
+    )
+  );
+
+-- RLS for audit_logs: only admin can read
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "admin_read_audit_logs" ON audit_logs
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM auth.users
+      WHERE auth.users.id = auth.uid()
+      AND auth.users.role = 'admin'::text
+    )
+  );
+
+CREATE POLICY "system_insert_audit_logs" ON audit_logs
+  FOR INSERT WITH CHECK (true);
+
 -- ==================== AUDIT LOG ====================
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

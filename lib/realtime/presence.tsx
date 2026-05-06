@@ -6,6 +6,7 @@
  * Follows Sanity + Google Docs pattern.
  */
 
+import React from 'react';
 import { EventEmitter } from 'events';
 import { nanoid } from 'nanoid';
 

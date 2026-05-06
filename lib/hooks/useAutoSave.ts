@@ -2,6 +2,7 @@
  * useAutoSave Hook
  * Debounced auto-save: fires 2 seconds after the last change.
  * Only saves when the page data has actually changed (dirty-state guard).
+ * Uses structural comparison to avoid JSON.stringify on every render.
  */
 
 "use client";
@@ -26,7 +27,8 @@ export function useAutoSave({
   onSaved,
 }: UseAutoSaveOptions) {
   const { state } = usePuck();
-  const prevDataRef = useRef<string>(JSON.stringify(state.data));
+  const prevDataRef = useRef<Data | null>(null);
+  const prevStringRef = useRef<string>("");
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isSavingRef = useRef(false);
 
@@ -47,7 +49,8 @@ export function useAutoSave({
         });
 
         if (res.ok) {
-          prevDataRef.current = JSON.stringify(data);
+          prevDataRef.current = data;
+          prevStringRef.current = JSON.stringify(data);
           onSaved?.();
         }
       } catch {
@@ -60,8 +63,17 @@ export function useAutoSave({
   );
 
   useEffect(() => {
+    // Structural comparison first (avoid stringify if references match)
+    if (state.data === prevDataRef.current) return;
+
+    // Only stringify if data actually changed structurally
     const currentJson = JSON.stringify(state.data);
-    if (currentJson === prevDataRef.current) return;
+
+    if (currentJson === prevStringRef.current) {
+      // Update ref to avoid future stringify
+      prevDataRef.current = state.data;
+      return;
+    }
 
     // Clear previous timer
     if (timerRef.current) clearTimeout(timerRef.current);

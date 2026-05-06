@@ -92,10 +92,10 @@ export async function getVersionHistory(
   if (pageError || !page) throw new Error("Page not found");
   if (page.created_by !== userId) throw new Error("Unauthorized");
 
-  // Fetch versions
+  // Fetch versions - only columns needed for history UI
   const { data: versions, error, count } = await supabase
     .from("page_versions")
-    .select("*", { count: "exact" })
+    .select("id, label, created_at, created_by, page_id", { count: "exact" })
     .eq("page_id", pageId)
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);

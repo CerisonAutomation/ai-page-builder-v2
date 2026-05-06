@@ -7,13 +7,12 @@
 
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, memo } from "react";
 import { usePuck } from "@measured/puck";
 import {
   X,
   Loader2,
   CheckCircle2,
-  XCircle,
   Sparkles,
   Copy,
   RotateCcw,
@@ -27,18 +26,18 @@ interface TextRefinePanelProps {
   isOpen: boolean;
   onClose: () => void;
   selectedText: string;
-  fieldPath?: string; // e.g., "content[0].props.headline"
-  context?: string; // e.g., "hero headline", "product description"
+  fieldPath?: string;
+  context?: string;
 }
 
-export function TextRefinePanel({
-    isOpen,
-    onClose,
-    selectedText,
-    fieldPath = "",
-    context = "",
-  }: TextRefinePanelProps) {
-    const { dispatch } = usePuck();
+function TextRefinePanel({
+  isOpen,
+  onClose,
+  selectedText,
+  fieldPath = "",
+  context = "",
+}: TextRefinePanelProps) {
+  const { dispatch } = usePuck();
   const [mode, setMode] = useState<RefinementMode>("shorter");
   const [customPrompt, setCustomPrompt] = useState("");
   const [refined, setRefined] = useState("");
@@ -47,7 +46,6 @@ export function TextRefinePanel({
   const [error, setError] = useState<string | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
 
-  // ✅ REFINE TEXT VIA STREAMING API
   const handleRefine = useCallback(async () => {
     if (!selectedText.trim()) {
       toast.error("No text selected");
@@ -59,7 +57,6 @@ export function TextRefinePanel({
     setError(null);
     setRefined("");
 
-    // Cancel previous request if any
     if (streamAbortRef.current) {
       streamAbortRef.current.abort();
     }
@@ -86,7 +83,6 @@ export function TextRefinePanel({
         throw new Error(errorText || "Refinement failed");
       }
 
-      // ✅ READ STREAMING RESPONSE
       const reader = response.body?.getReader();
       if (!reader) throw new Error("No response body");
 
@@ -99,9 +95,8 @@ export function TextRefinePanel({
 
         buffer += decoder.decode(value, { stream: true });
 
-        // Parse individual JSON objects from streaming response
         const lines = buffer.split("\n");
-        buffer = lines[lines.length - 1]; // Keep incomplete line in buffer
+        buffer = lines[lines.length - 1];
 
         for (let i = 0; i < lines.length - 1; i++) {
           const line = lines[i].trim();
@@ -116,12 +111,11 @@ export function TextRefinePanel({
               setStreaming(false);
             }
           } catch (e) {
-            // Ignore JSON parse errors for incomplete lines
+            // Ignore incomplete JSON
           }
         }
       }
 
-      // Process any remaining buffer
       if (buffer.trim()) {
         try {
           const data = JSON.parse(buffer);
@@ -134,7 +128,7 @@ export function TextRefinePanel({
       }
     } catch (e: any) {
       if (e.name === "AbortError") {
-        // Refinement was cancelled by user - no error needed
+        // Cancelled
       } else {
         const message = e.message || "Refinement failed";
         setError(message);
@@ -146,23 +140,17 @@ export function TextRefinePanel({
     }
   }, [selectedText, mode, customPrompt, context]);
 
-  // ✅ ACCEPT REFINED TEXT
   const handleAccept = useCallback(() => {
     if (!refined.trim()) {
       toast.error("No refined text to accept");
       return;
     }
 
-    // Note: In Puck v0.20.2, we would need to navigate state structure
-    // and dispatch setData with updated content. For now, copy to clipboard
-    // and let user paste. Future enhancement: full state integration.
-      
     handleCopy();
     toast.success("Text refined! Pasted to clipboard.");
     onClose();
   }, [refined, onClose]);
 
-  // ✅ COPY REFINED TEXT
   const handleCopy = useCallback(() => {
     if (refined) {
       navigator.clipboard.writeText(refined);
@@ -170,7 +158,6 @@ export function TextRefinePanel({
     }
   }, [refined]);
 
-  // ✅ CANCEL STREAMING
   const handleCancel = useCallback(() => {
     if (streamAbortRef.current) {
       streamAbortRef.current.abort();
@@ -180,54 +167,106 @@ export function TextRefinePanel({
     onClose();
   }, [onClose]);
 
+const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Focus management
+  useEffect(() => {
+    if (isOpen) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      // Focus the close button when modal opens
+      const closeBtn = document.querySelector('[data-refine-close]') as HTMLElement;
+      closeBtn?.focus();
+    }
+
+    return () => {
+      if (isOpen) {
+        previousFocusRef.current?.focus();
+      }
+    };
+  }, [isOpen]);
+
+  // Focus trap
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      onClose();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      const modal = document.querySelector('[data-refine-modal]');
+      if (!modal) return;
+
+      const focusableElements = modal.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      const firstElement = focusableElements[0] as HTMLElement;
+      const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    }
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end">
-      <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-t-xl shadow-xl overflow-hidden flex flex-col">
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-end"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="refine-panel-title"
+      onKeyDown={handleKeyDown}
+    >
+      <div
+        data-refine-modal
+        className="bg-white w-full max-w-2xl max-h-[90vh] rounded-t-xl shadow-xl overflow-hidden flex flex-col"
+      >
         {/* Header */}
         <div className="border-b px-4 py-3 flex items-center justify-between bg-gradient-to-r from-violet-50 to-indigo-50">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-violet-600" />
-            <h2 className="font-semibold text-slate-900">Refine Text</h2>
+            <h2 id="refine-panel-title" className="font-semibold text-slate-900">Refine Text</h2>
             {context && (
               <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded">
                 {context}
               </span>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-white rounded-md transition text-slate-500"
-          >
-            <X className="w-5 h-5" />
-          </button>
+<button
+             data-refine-close
+             onClick={onClose}
+             className="p-1 hover:bg-white rounded-md transition text-slate-500"
+             aria-label="Close text refinement panel"
+           >
+             <X className="w-5 h-5" />
+           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Mode Selection */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-700">
               Refinement Type
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {(
-                [
-                  { id: "shorter", label: "Shorter", desc: "More concise" },
-                  { id: "engaging", label: "Engaging", desc: "More compelling" },
-                  {
-                    id: "professional",
-                    label: "Professional",
-                    desc: "Formal tone",
-                  },
-                  { id: "grammar", label: "Grammar", desc: "Fix errors" },
-                ] as const
-              ).map((option) => (
+              {[
+                { id: "shorter", label: "Shorter", desc: "More concise" },
+                { id: "engaging", label: "Engaging", desc: "More compelling" },
+                { id: "professional", label: "Professional", desc: "Formal tone" },
+                { id: "grammar", label: "Grammar", desc: "Fix errors" },
+              ].map((option) => (
                 <button
                   key={option.id}
                   onClick={() => {
-                    setMode(option.id);
+                    setMode(option.id as RefinementMode);
                     setRefined("");
                   }}
                   className={`p-2 rounded-lg border transition text-left ${
@@ -245,7 +284,6 @@ export function TextRefinePanel({
             </div>
           </div>
 
-          {/* Custom Prompt (if custom mode) */}
           {mode === "custom" && (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700">
@@ -260,7 +298,6 @@ export function TextRefinePanel({
             </div>
           )}
 
-          {/* Original Text */}
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-700">
               Original Text
@@ -270,7 +307,6 @@ export function TextRefinePanel({
             </div>
           </div>
 
-          {/* Refined Text with Diff */}
           {refined && (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700">
@@ -280,14 +316,12 @@ export function TextRefinePanel({
             </div>
           )}
 
-          {/* Error Message */}
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
               {error}
             </div>
           )}
 
-          {/* Loading State */}
           {loading && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -296,7 +330,6 @@ export function TextRefinePanel({
           )}
         </div>
 
-        {/* Footer - Actions */}
         <div className="border-t bg-slate-50 px-4 py-3 flex gap-2">
           <button
             onClick={handleCancel}
@@ -355,4 +388,4 @@ export function TextRefinePanel({
   );
 }
 
-export default TextRefinePanel;
+export default memo(TextRefinePanel);

@@ -5,7 +5,7 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import { usePuck } from "@measured/puck";
 import type { Data } from "@measured/puck";
 import { puckConfig, emptyPage } from "@/lib/puck/config";
@@ -17,7 +17,7 @@ interface AIPanelProps {
   slug: string;
 }
 
-export function AIPanel({ slug }: AIPanelProps) {
+function AIPanel({ slug }: AIPanelProps) {
     const { dispatch } = usePuck();
     const [prompt, setPrompt] = useState("");
     const [mode, setMode] = useState<"block" | "page">("block");
@@ -58,11 +58,14 @@ export function AIPanel({ slug }: AIPanelProps) {
             );
           }
 
-          // Note: For direct block insertion, user will need to manually add via UI
-          // The dispatch API has changed in Puck v0.20.2
-          toast.info("Block generated. Drag it from the right panel to add it.");
+          // Auto-insert the block into the editor
+          dispatch({
+            type: "insert",
+            componentType: output.componentName,
+            props: output.props || {},
+          } as any);
 
-          toast.success(`${output.componentName} added!`);
+          toast.success(`${output.componentName} added to page!`);
           setPrompt("");
         } else {
           // ✅ GENERATE FULL PAGE
@@ -93,15 +96,23 @@ export function AIPanel({ slug }: AIPanelProps) {
         }
       } catch (error: unknown) {
         let message = "Generation failed";
-          
+        let isSafetyError = false;
+
         if (error instanceof Error) {
           message = error.message;
+          isSafetyError = message.includes("safety") || message.includes("blocked") || message.includes("HARM_CATEGORY");
         } else if (typeof error === "string") {
           message = error;
+          isSafetyError = message.includes("safety") || message.includes("blocked");
         }
-          
+
         setError(message);
-        toast.error(message);
+
+        if (isSafetyError) {
+          toast.error("Content blocked by safety filters. Please modify your prompt.");
+        } else {
+          toast.error(message);
+        }
       } finally {
         setLoading(false);
       }
@@ -188,4 +199,4 @@ export function AIPanel({ slug }: AIPanelProps) {
   );
 }
 
-export default AIPanel;
+export default memo(AIPanel);

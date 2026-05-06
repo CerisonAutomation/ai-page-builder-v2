@@ -19,8 +19,10 @@ export default async function AdminPage() {
     return null;
   }
 
-  const pagesResult = await listPages(user.id);
-  const mediaResult = await listMedia(user.id);
+  const [pagesResult, mediaResult] = await Promise.all([
+    listPages(user.id, { limit: 5 }),
+    listMedia(user.id, { limit: 5 }),
+  ]);
 
   const stats = [
     {

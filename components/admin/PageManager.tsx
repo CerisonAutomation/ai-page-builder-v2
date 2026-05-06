@@ -9,7 +9,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { listPages, deletePage, publishPage, unpublishPage } from '@/lib/db/pages';
 import { logger } from '@/lib/utils/logger';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import CreatePageModal from './CreatePageModal';
 import PageEditor from './PageEditor';
 
@@ -120,9 +120,9 @@ export default function PageManager({ userId }: PageManagerProps) {
           publishPage(id, userId)
         )
       );
+      await loadPages();
       setSelectedPages(new Set());
       toast.success(`${selectedPages.size} pages published`);
-      await loadPages();
     } catch (error) {
       logger.error('Bulk publish failed', error);
       toast.error('Failed to publish pages');
@@ -136,9 +136,9 @@ export default function PageManager({ userId }: PageManagerProps) {
           unpublishPage(id, userId)
         )
       );
+      await loadPages();
       setSelectedPages(new Set());
       toast.success(`${selectedPages.size} pages unpublished`);
-      await loadPages();
     } catch (error) {
       logger.error('Bulk unpublish failed', error);
       toast.error('Failed to unpublish pages');
@@ -154,9 +154,9 @@ export default function PageManager({ userId }: PageManagerProps) {
           deletePage(id, userId)
         )
       );
+      await loadPages();
       setSelectedPages(new Set());
       toast.success(`${selectedPages.size} pages deleted`);
-      await loadPages();
     } catch (error) {
       logger.error('Bulk delete failed', error);
       toast.error('Failed to delete pages');
@@ -308,6 +308,15 @@ export default function PageManager({ userId }: PageManagerProps) {
                   <td
                     className="px-6 py-4 cursor-pointer"
                     onClick={() => setSelectedPage(page)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedPage(page);
+                      }
+                    }}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Edit ${page.title}`}
                   >
                     <div className="font-medium text-gray-900">{page.title}</div>
                     <div className="text-sm text-gray-600">{page.description}</div>

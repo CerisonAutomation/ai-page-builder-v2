@@ -8,6 +8,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { usePuck } from "@measured/puck";
 import type { Data } from "@measured/puck";
+import { logger } from "@/lib/utils/logger";
 import {
   ChevronDown,
   ChevronUp,
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistance } from "date-fns";
-import { logger } from "@/lib/utils/logger";
 
 interface VersionSnapshot {
   id: string;
@@ -54,8 +54,8 @@ interface VersionControlProps {
   slug: string;
 }
 
-export function VersionControl({ pageId, slug }: VersionControlProps) {
-    const { dispatch } = usePuck();
+function VersionControl({ pageId, slug }: VersionControlProps) {
+    const { dispatch, state } = usePuck();
   const [versions, setVersions] = useState<VersionSnapshot[]>([]);
   const [loading, setLoading] = useState(false);
   const [comparing, setComparing] = useState<string | null>(null);
@@ -99,30 +99,25 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
     }
   }, [expanded, pageId, loadVersions]);
 
-  // Auto-snapshot every 30 seconds (only if data changed)
-  useEffect(() => {
-    if (!pageId) return;
-
-    const interval = setInterval(async () => {
-      // Note: Auto-snapshot would need state integration
-      // Placeholder for future enhancement
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [pageId]);
+  // Auto-snapshot removed: placeholder interval did nothing
+  // To re-enable, integrate with Puck's usePuck().state and use the /api/versions endpoint
 
   // Compare current with version
   const handleCompare = useCallback(
     async (versionId: string) => {
       try {
         setComparing(versionId);
+
+        // Get current editor state
+        const currentData = state?.data as Data | undefined;
+
         const res = await fetch(
           `/api/versions/${pageId}/compare?versionId=${versionId}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              currentData: {},
+              currentData: currentData || {},
             }),
           }
         );
@@ -131,12 +126,13 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
         const diff = await res.json();
         setComparisonResult(diff);
       } catch (error) {
+        logger.error("Failed to compare versions", error);
         toast.error("Failed to compare versions");
       } finally {
         setComparing(null);
       }
     },
-    [pageId]
+    [pageId, state?.data]
   );
 
   // Restore version
@@ -508,3 +504,5 @@ export function VersionControl({ pageId, slug }: VersionControlProps) {
     </div>
   );
 }
+
+export default memo(VersionControl);

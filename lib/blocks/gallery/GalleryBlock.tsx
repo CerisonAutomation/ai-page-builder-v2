@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { AllBlockProps } from "../types";
 
 const gridColsMap = {
@@ -32,13 +33,17 @@ export function GalleryBlock(props: AllBlockProps["GalleryBlock"]) {
     <div className="w-full py-16 px-4">
       <div className={`grid ${colsClass} ${gapClass}`}>
         {props.images.map((img, i) => (
-            <img
-              key={i}
-              src={img}
-              alt={`Gallery image ${i + 1}`}
-              className="w-full h-64 object-cover rounded-lg"
-            />
-          ))}
+          <Image
+            key={i}
+            src={img}
+            alt={`Gallery image ${i + 1}`}
+            width={400}
+            height={256}
+            loading="lazy"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            className="w-full h-64 object-cover rounded-lg"
+          />
+        ))}
       </div>
     </div>
   );

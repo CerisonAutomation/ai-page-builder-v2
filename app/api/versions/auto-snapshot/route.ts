@@ -7,12 +7,13 @@ import { logger } from "@/lib/utils/logger";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
 import { createVersionSnapshot } from "@/lib/db/versions";
 import type { Data } from "@measured/puck";
+import crypto from "crypto";
 
 // Store last snapshot hash per page to avoid duplicates
 const lastSnapshotHash = new Map<string, string>();
 
 function hashData(data: Data): string {
-  return JSON.stringify(data).substring(0, 100); // Simple hash
+  return crypto.createHash("md5").update(JSON.stringify(data)).digest("hex");
 }
 
 export async function POST(request: Request) {

@@ -40,7 +40,14 @@ export async function GET(
       offset
     );
 
-    return Response.json({ versions, total, limit, offset });
+    return Response.json(
+      { versions, total, limit, offset },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error: unknown) {
     logger.error("Failed to fetch versions", error);
     let message = "Failed to fetch versions";

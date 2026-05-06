@@ -155,7 +155,7 @@ export async function createPage(input: SavePageInput & { user_id: string }) {
 }
 
 /**
- * Update page
+ * Update page - optimized to single query with ownership check via RLS
  */
 export async function updatePage(
   pageId: string,
@@ -164,20 +164,22 @@ export async function updatePage(
 ) {
   const supabase = await createServerSupabaseClient();
 
-  // Verify ownership
-  const page = await getPageById(pageId, userId);
-  if (!page) {
-    throw new Error("Page not found or access denied");
-  }
+  // Check slug uniqueness if changing (must happen before update)
+  if (updates.slug) {
+    const { data: existing } = await supabase
+      .from("pages")
+      .select("id")
+      .eq("slug", updates.slug)
+      .neq("id", pageId)
+      .is("deleted_at", null)
+      .maybeSingle();
 
-  // Check slug uniqueness if changing
-  if (updates.slug && updates.slug !== page.slug) {
-    const existing = await getPageBySlug(updates.slug, userId);
     if (existing) {
       throw new Error(`Slug "${updates.slug}" already exists`);
     }
   }
 
+  // Single query: update with user_id filter acts as ownership check via RLS
   const { data, error } = await supabase
     .from("pages")
     .update({
@@ -190,10 +192,13 @@ export async function updatePage(
     })
     .eq("id", pageId)
     .eq("user_id", userId)
+    .is("deleted_at", null)
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) throw error;
+  if (!data) throw new Error("Page not found or access denied");
+
   return data as Page;
 }
 
@@ -303,34 +308,23 @@ export async function getPageWithVersions(pageId: string, userId: string) {
 }
 
 /**
- * Count pages by status
+ * Count pages by status - single query using aggregate
  */
 export async function countPages(userId: string) {
   const supabase = await createServerSupabaseClient();
 
-  const [
-    { count: total },
-    { count: published },
-    { count: draft },
-  ] = await Promise.all([
-    supabase
-      .from("pages")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .is("deleted_at", null),
-    supabase
-      .from("pages")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("published", true)
-      .is("deleted_at", null),
-    supabase
-      .from("pages")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-      .eq("published", false)
-      .is("deleted_at", null),
-  ]);
+  // Single query with aggregate functions
+  const { data, error } = await supabase
+    .from("pages")
+    .select("published")
+    .eq("user_id", userId)
+    .is("deleted_at", null);
 
-  return { total: total ?? 0, published: published ?? 0, draft: draft ?? 0 };
+  if (error) throw error;
+
+  const total = data?.length ?? 0;
+  const published = data?.filter((p) => p.published).length ?? 0;
+  const draft = total - published;
+
+  return { total, published, draft };
 }

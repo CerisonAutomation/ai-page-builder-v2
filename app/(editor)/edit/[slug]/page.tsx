@@ -4,7 +4,7 @@
  * This prevents blank editor bug
  */
 
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import { redirect } from "next/navigation";
 import { getPageBySlug } from "@/lib/db/pages";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
@@ -31,6 +31,11 @@ interface EditPageProps {
   params: { slug: string };
 }
 
+// ✅ CACHED PAGE FETCH - reuse between page component and generateMetadata
+const getCachedPage = cache(async (slug: string) => {
+  return await getPageBySlug(slug);
+});
+
 /**
  * ✅ SERVER COMPONENT — Fetch data before hydration
  * Never pass data={{}} to editor
@@ -48,8 +53,8 @@ export default async function EditPage({ params }: EditPageProps) {
   }
 
   try {
-    // ✅ STEP 1: Fetch page from database
-    const page = await getPageBySlug(params.slug);
+    // ✅ STEP 1: Fetch page from database (cached)
+    const page = await getCachedPage(params.slug);
 
     // ✅ STEP 2: Use saved data or empty scaffold
     const initialData = (page?.data as any) ?? emptyPage;
@@ -84,11 +89,11 @@ export default async function EditPage({ params }: EditPageProps) {
   }
 }
 
-// ✅ METADATA
+// ✅ METADATA - uses cached page fetch to avoid duplicate DB call
 export async function generateMetadata({
   params,
 }: EditPageProps) {
-  const page = await getPageBySlug(params.slug);
+  const page = await getCachedPage(params.slug);
   return {
     title: page?.title ? `Edit: ${page.title}` : "Create Page",
     description: "Visual page editor",

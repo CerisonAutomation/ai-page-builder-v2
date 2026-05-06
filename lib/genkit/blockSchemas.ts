@@ -3,7 +3,7 @@
  * human-readable JSON-schema string suitable for injecting into AI prompts.
  */
 
-import { z } from "zod";
+import { z, type ZodTypeAny } from "zod";
 import { HeroBlockSchema } from "@/lib/blocks/hero/HeroBlock.schema";
 import { CardGridBlockSchema } from "@/lib/blocks/card-grid/CardGridBlock.schema";
 import { FeatureListBlockSchema } from "@/lib/blocks/feature-list/FeatureListBlock.schema";
@@ -16,7 +16,7 @@ import { TimelineBlockSchema } from "@/lib/blocks/timeline/TimelineBlock.schema"
 import { GalleryBlockSchema } from "@/lib/blocks/gallery/GalleryBlock.schema";
 
 /** Map from block name → Zod object schema */
-export const blockSchemaMap: Record<string, z.ZodTypeAny> = {
+export const blockSchemaMap: Record<string, ZodTypeAny> = {
   HeroBlock: HeroBlockSchema,
   CardGridBlock: CardGridBlockSchema,
   FeatureListBlock: FeatureListBlockSchema,
@@ -36,7 +36,8 @@ export const blockSchemaMap: Record<string, z.ZodTypeAny> = {
 type ZodCheck = { kind: string; value?: number };
 
 function getChecks(schema: z.ZodString | z.ZodNumber): ZodCheck[] {
-  return ((schema._def.checks ?? []) as unknown) as ZodCheck[];
+  const checks = (schema._def as { checks?: unknown }).checks ?? [];
+  return checks as ZodCheck[];
 }
 
 function zodToPromptString(schema: z.ZodTypeAny, indent = 0): string {
@@ -51,11 +52,11 @@ function zodToPromptString(schema: z.ZodTypeAny, indent = 0): string {
   }
 
   if (schema instanceof z.ZodArray) {
-    return `[${zodToPromptString((schema.element as unknown) as z.ZodTypeAny, indent)}]`;
+    return `[${zodToPromptString(schema.element as ZodTypeAny, indent)}]`;
   }
 
   if (schema instanceof z.ZodOptional) {
-    return `${zodToPromptString((schema.unwrap() as unknown) as z.ZodTypeAny, indent)} (optional)`;
+    return `${zodToPromptString(schema.unwrap() as ZodTypeAny, indent)} (optional)`;
   }
 
   if (schema instanceof z.ZodString) {
@@ -80,8 +81,8 @@ function zodToPromptString(schema: z.ZodTypeAny, indent = 0): string {
 
   if (schema instanceof z.ZodBoolean) return "boolean";
   if (schema instanceof z.ZodEnum) {
-    const values: unknown[] =
-      (schema._def as { values?: unknown[] }).values ?? [];
+    const def = schema._def as { values?: unknown[] };
+    const values = def.values ?? [];
     return values.map((o) => `"${String(o)}"`).join(" | ");
   }
 

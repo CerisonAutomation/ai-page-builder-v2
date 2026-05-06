@@ -6,7 +6,7 @@ export function PricingBlock(props: AllBlockProps["PricingBlock"]) {
       {props.title && (
         <h2 className="text-3xl font-bold mb-12 text-center">{props.title}</h2>
       )}
-      <div className="grid grid-cols-3 gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {props.plans.map((plan, i) => (
           <div
             key={i}

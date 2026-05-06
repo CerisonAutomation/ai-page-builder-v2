@@ -19,7 +19,7 @@ export const MediaSchema = z.object({
 
 export type Media = z.infer<typeof MediaSchema>;
 
-const BUCKET_NAME = "media";
+const BUCKET_NAME = "page-media";
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 /**
@@ -194,25 +194,40 @@ export async function getSignedUrl(mediaId: string, userId: string) {
 }
 
 /**
- * Get media usage stats
+ * Get media usage stats - uses PostgreSQL SUM() to avoid fetching all rows
  */
 export async function getMediaStats(userId: string) {
   const supabase = await createServerSupabaseClient();
 
+  // Use aggregate query - only need sum and count, not all rows
   const { data, error } = await supabase
-    .from("media")
-    .select("size")
-    .eq("user_id", userId);
+    .rpc("get_media_stats", { user_id_param: userId })
+    .single();
 
-  if (error) throw error;
+  if (error) {
+    // Fallback: use a simpler aggregate query if RPC not available
+    const { data: agg, error: aggError } = await supabase
+      .from("media")
+      .select("size")
+      .eq("user_id", userId);
 
-  const totalSize = (data ?? []).reduce((sum, f) => sum + f.size, 0);
-  const count = data?.length ?? 0;
+    if (aggError) throw aggError;
+
+    const files = agg ?? [];
+    const count = files.length;
+    const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
+
+    return {
+      count,
+      totalSize,
+      totalSizeMB: Math.round(totalSize / 1024 / 1024),
+    };
+  }
 
   return {
-    count,
-    totalSize,
-    totalSizeMB: Math.round(totalSize / 1024 / 1024),
+    count: data?.count ?? 0,
+    totalSize: data?.total_size ?? 0,
+    totalSizeMB: Math.round((data?.total_size ?? 0) / 1024 / 1024),
   };
 }
 

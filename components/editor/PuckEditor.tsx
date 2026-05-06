@@ -1,12 +1,6 @@
-/**
- * Puck Editor Client Component
- * ✅ Receives pre-loaded data from server
- * Integrates AI panel, auto-save, and tabbed sidebar
- */
-
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, memo } from "react";
 import { Puck } from "@measured/puck";
 import "@measured/puck/puck.css";
 import type { Data } from "@measured/puck";
@@ -23,7 +17,7 @@ interface PuckEditorProps {
   description: string;
 }
 
-export default function PuckEditor({
+function PuckEditor({
   slug,
   pageId,
   initialData,
@@ -33,7 +27,6 @@ export default function PuckEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
 
-  // ✅ EXPLICIT PUBLISH
   const handlePublish = useCallback(
     async (data: Data) => {
       setIsSaving(true);
@@ -51,7 +44,7 @@ export default function PuckEditor({
           body: JSON.stringify({
             slug,
             title: (data.root?.props?.title as string) || title,
-            description: description,
+            description,
             data,
           }),
         });
@@ -100,7 +93,6 @@ export default function PuckEditor({
         data={initialData}
         onPublish={handlePublish}
         overrides={{
-          // ✅ CUSTOM ACTION BAR
           actionBar: ({ children }) => (
             <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
               <div className="flex items-center gap-3">
@@ -128,7 +120,6 @@ export default function PuckEditor({
             </div>
           ),
 
-          // ✅ TABBED SIDEBAR (useAutoSave runs inside Puck context here)
           fields: ({ children }) => (
             <Sidebar>
               {children}
@@ -139,3 +130,5 @@ export default function PuckEditor({
     </div>
   );
 }
+
+export default memo(PuckEditor);

@@ -28,7 +28,14 @@ export async function GET(req: NextRequest) {
     // ✅ Fetch media
     const result = await listMedia(user.id, { limit, offset });
 
-    return NextResponse.json({ files: result.files, total: result.total });
+    return NextResponse.json(
+      { files: result.files, total: result.total },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=120",
+        },
+      }
+    );
   } catch (error: unknown) {
     logger.error("Failed to list media", error);
     return NextResponse.json(

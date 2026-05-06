@@ -107,7 +107,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "@supabase/supabase-js",
       "@measured/puck",
-      "react-hot-toast",
+      "sonner",
     ],
   },
 

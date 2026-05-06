@@ -3,7 +3,7 @@ import type { AllBlockProps } from "../types";
 export function TestimonialBlock(props: AllBlockProps["TestimonialBlock"]) {
   return (
     <div className="w-full py-16 px-4 bg-slate-50">
-      <div className="grid grid-cols-3 gap-8 max-w-5xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {props.quotes.map((q, i) => (
           <div key={i} className="bg-white p-6 rounded-lg shadow-sm">
             <p className="italic text-slate-600 mb-4">"{q.text}"</p>
