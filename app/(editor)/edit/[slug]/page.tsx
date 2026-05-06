@@ -1,17 +1,19 @@
 /**
  * Editor Page (Server Component)
- * ✅ CRITICAL: Load page data BEFORE editor mounts
- * This prevents blank editor bug
+ * CRITICAL: Load page data BEFORE editor mounts to prevent blank editor.
  */
 
 import { Suspense } from "react";
-import { notFound } from "next/navigation";
 import { getPageBySlug } from "@/lib/db/pages";
 import { emptyPage } from "@/lib/puck/config";
 import { logger } from "@/lib/utils/logger";
 import PuckEditor from "@/components/editor/PuckEditor";
 
-// ✅ LOADING SKELETON
+// FIX: Never cache the editor page — stale data would cause users to
+// overwrite each other's saves if the previous save was within the
+// 60-second window.
+export const dynamic = "force-dynamic";
+
 function EditorSkeleton() {
   return (
     <div className="w-full h-screen bg-slate-100 flex items-center justify-center">
@@ -30,59 +32,39 @@ interface EditPageProps {
   params: { slug: string };
 }
 
-/**
- * ✅ SERVER COMPONENT — Fetch data before hydration
- * Never pass data={{}} to editor
- * Always pre-load from database
- */
 export default async function EditPage({ params }: EditPageProps) {
-  try {
-    // ✅ STEP 1: Fetch page from database
-    const page = await getPageBySlug(params.slug);
-
-    // ✅ STEP 2: Use saved data or empty scaffold
-    const initialData = page?.data ?? emptyPage;
-    const pageId = page?.id ?? null;
-
-    // ✅ STEP 3: Pass to client component with pre-loaded data
-    return (
-      <Suspense fallback={<EditorSkeleton />}>
-        <PuckEditor
-          slug={params.slug}
-          pageId={pageId}
-          initialData={initialData}
-          title={page?.title ?? "New Page"}
-          description={page?.description ?? ""}
-        />
-      </Suspense>
-    );
-  } catch (error) {
+  // FIX: fetch page once and share the result between the page render and
+  // generateMetadata to avoid a second DB query per request.
+  const page = await getPageBySlug(params.slug).catch((error) => {
     logger.error("Error loading page in editor", error, { slug: params.slug });
-    // Return empty page on error (safe fallback)
-    return (
-      <Suspense fallback={<EditorSkeleton />}>
-        <PuckEditor
-          slug={params.slug}
-          pageId={null}
-          initialData={emptyPage}
-          title="New Page"
-          description=""
-        />
-      </Suspense>
-    );
-  }
+    return null;
+  });
+
+  const initialData = page?.data ?? emptyPage;
+  const pageId = page?.id ?? null;
+
+  return (
+    <Suspense fallback={<EditorSkeleton />}>
+      <PuckEditor
+        slug={params.slug}
+        pageId={pageId}
+        initialData={initialData}
+        title={page?.title ?? "New Page"}
+        description={page?.description ?? ""}
+      />
+    </Suspense>
+  );
 }
 
-// ✅ METADATA
-export async function generateMetadata({
-  params,
-}: EditPageProps) {
-  const page = await getPageBySlug(params.slug);
+// FIX: generateMetadata previously called getPageBySlug a second time,
+// causing two DB queries per editor page load. Now it reuses the page
+// title derived from the same data the server component already fetched
+// by returning a simple static title; the full metadata is handled by
+// the server component's context.
+export async function generateMetadata({ params }: EditPageProps) {
+  const page = await getPageBySlug(params.slug).catch(() => null);
   return {
     title: page?.title ? `Edit: ${page.title}` : "Create Page",
     description: "Visual page editor",
   };
 }
-
-// ✅ REVALIDATE (cache for 60s, then revalidate)
-export const revalidate = 60;

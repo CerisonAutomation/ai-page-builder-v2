@@ -1,7 +1,6 @@
 /**
  * Enhanced AI Panel Component
- * ✅ Block & page generation + inline text refinement
- * ✅ Integrated TextRefinePanel for edit-in-place workflow
+ * Block & page generation + inline text refinement
  */
 
 "use client";
@@ -10,24 +9,29 @@ import { useState, useCallback } from "react";
 import { usePuck } from "@measured/puck";
 import type { Data } from "@measured/puck";
 import { puckConfig, emptyPage } from "@/lib/puck/config";
-import { Loader2, Sparkles, Wand2, Edit3 } from "lucide-react";
+import { Loader2, Sparkles, Wand2, Edit3, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
-import { v4 as uuid } from "uuid";
 import { TextRefinePanel } from "./TextRefinePanel";
 import { useTextRefinement } from "@/lib/hooks/useTextRefinement";
+
+type Tone = "professional" | "casual" | "bold" | "minimal";
 
 interface AIEnhancedPanelProps {
   slug: string;
 }
 
 export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
-  const { dispatch } = usePuck();
+  // FIX: destructure both dispatch AND state from usePuck
+  const { dispatch, state } = usePuck();
   const [prompt, setPrompt] = useState("");
   const [mode, setMode] = useState<"block" | "page">("block");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [industry, setIndustry] = useState("technology");
+  const [tone, setTone] = useState<Tone>("professional");
 
-  // ✅ TEXT REFINEMENT INTEGRATION
+  // TEXT REFINEMENT INTEGRATION
   const textRefinement = useTextRefinement();
 
   const handleGenerate = useCallback(async () => {
@@ -41,13 +45,12 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
 
     try {
       if (mode === "block") {
-        // ✅ GENERATE SINGLE BLOCK
         const res = await fetch("/api/ai/generate-block", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             prompt: prompt.trim(),
-            context: slug,
+            context: `${industry} page, ${tone} tone`,
           }),
         });
 
@@ -57,50 +60,39 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
 
         const output = await res.json();
 
-        // ✅ Validate component exists
+        // Validate component exists
         if (!(output.componentName in puckConfig.components)) {
           throw new Error(
             `Invalid block: ${output.componentName}. Contact support.`
           );
         }
 
-        // ✅ CREATE NEW BLOCK
-        const blockId = `ai-${uuid()}`;
+        // FIX: use state.data (not dispatch.state which is undefined)
+        if (!state?.data?.content) {
+          throw new Error("Invalid editor state: content array missing");
+        }
 
-        dispatch({
-          type: "INSERT",
-          componentType: output.componentName,
-          destinationIndex: Number.MAX_SAFE_INTEGER,
-          id: blockId,
-          destinationZone: "content",
-        });
+        // FIX: single SET_DATA dispatch with the new block appended;
+        // no INSERT + SET_DATA double-dispatch that would create duplicate blocks.
+        const updatedData: Data = {
+          ...state.data,
+          content: [
+            ...state.data.content,
+            { type: output.componentName, props: output.props },
+          ],
+        };
 
-        // ✅ SET PROPS
-        dispatch({
-          type: "SET_DATA",
-          data: {
-            ...dispatch.state.data,
-            content: [
-              ...dispatch.state.data.content,
-              {
-                type: output.componentName,
-                props: output.props,
-              },
-            ],
-          } as Data,
-        });
-
-        toast.success(`${output.componentName} added! Double-click text to refine.`);
+        dispatch({ type: "SET_DATA", data: updatedData });
+        toast.success(`${output.componentName} added! Select text to refine.`);
         setPrompt("");
       } else {
-        // ✅ GENERATE FULL PAGE
         const res = await fetch("/api/ai/generate-page", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             description: prompt.trim(),
-            industry: "technology",
-            tone: "professional",
+            industry,
+            tone,
           }),
         });
 
@@ -110,12 +102,7 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
 
         const pageData = await res.json();
 
-        // ✅ REPLACE ENTIRE PAGE
-        dispatch({
-          type: "SET_DATA",
-          data: pageData as Data,
-        });
-
+        dispatch({ type: "SET_DATA", data: pageData as Data });
         toast.success("Page generated! Select text to refine details.");
         setPrompt("");
       }
@@ -133,9 +120,8 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [prompt, mode, slug, dispatch]);
+  }, [prompt, mode, slug, dispatch, state, industry, tone]);
 
-  // ✅ KEYBOARD SHORTCUT
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -188,6 +174,46 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
           className="w-full text-xs border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400"
         />
 
+        {/* Advanced options */}
+        <div>
+          <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 transition"
+          >
+            <ChevronDown
+              className={`w-3 h-3 transition-transform ${showAdvanced ? "rotate-180" : ""}`}
+            />
+            Advanced options
+          </button>
+          {showAdvanced && (
+            <div className="mt-2 space-y-2">
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-1">Industry</label>
+                <input
+                  type="text"
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  placeholder="e.g., technology, healthcare..."
+                  className="w-full text-xs border rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                />
+              </div>
+              <div>
+                <label className="block text-[10px] text-slate-500 mb-1">Tone</label>
+                <select
+                  value={tone}
+                  onChange={(e) => setTone(e.target.value as Tone)}
+                  className="w-full text-xs border rounded p-1.5 focus:outline-none focus:ring-1 focus:ring-violet-400"
+                >
+                  <option value="professional">Professional</option>
+                  <option value="casual">Casual</option>
+                  <option value="bold">Bold</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Error State */}
         {error && (
           <div className="text-xs text-red-600 bg-red-50 rounded p-2">
@@ -228,7 +254,7 @@ export function AIEnhancedPanel({ slug }: AIEnhancedPanelProps) {
         </div>
       </div>
 
-      {/* ✅ TEXT REFINEMENT PANEL */}
+      {/* TEXT REFINEMENT PANEL */}
       <TextRefinePanel
         isOpen={textRefinement.isPanelOpen}
         onClose={textRefinement.closePanel}

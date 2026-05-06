@@ -1,18 +1,18 @@
 /**
  * Puck Editor Client Component
- * ✅ Receives pre-loaded data from server
- * Integrates AI panel for block generation
+ * Receives pre-loaded data from server, integrates AI panel + autosave.
  */
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Puck } from "@measured/puck";
 import "@measured/puck/puck.css";
 import type { Data } from "@measured/puck";
 import { puckConfig } from "@/lib/puck/config";
-import { AIPanel } from "@/components/editor/AIPanel";
+import { AIEnhancedPanel } from "@/components/editor/AIPanel.enhanced";
 import { MediaPanel } from "@/components/editor/MediaPanel";
+import { VersionControl } from "@/components/editor/VersionControl";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -31,21 +31,21 @@ export default function PuckEditor({
   title,
   description,
 }: PuckEditorProps) {
-  // ✅ PRE-LOADED DATA (from server)
   const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ✅ SAVE PAGE
-  const handlePublish = useCallback(
-    async (data: Data) => {
+  // Persist page data (called both on explicit Publish and on autosave)
+  const savePage = useCallback(
+    async (data: Data, { silent = false }: { silent?: boolean } = {}) => {
+      if (!data?.root?.props?.title) {
+        if (!silent) toast.error("Page title is required");
+        return;
+      }
+
       setIsSaving(true);
       try {
-        // Validate state before sending
-        if (!data?.root?.props?.title) {
-          throw new Error("Page title is required");
-        }
-
         const method = pageId ? "PUT" : "POST";
         const url = pageId ? `/api/pages/${slug}` : "/api/pages";
 
@@ -61,19 +61,16 @@ export default function PuckEditor({
         });
 
         if (!res.ok) {
-          // Safely parse error response
           let errorMsg = `Save failed (${res.status})`;
           try {
             const errorData = await res.json();
             errorMsg = errorData.message || errorData.error || errorMsg;
           } catch {
-            // Response wasn't JSON, use status text
             errorMsg = res.statusText || errorMsg;
           }
           throw new Error(errorMsg);
         }
 
-        // Safely parse success response
         let result: any;
         try {
           result = await res.json();
@@ -82,12 +79,12 @@ export default function PuckEditor({
         }
 
         setLastSaved(new Date());
-        toast.success(pageId ? "Page updated!" : "Page created!");
-        setIsPublished(true);
+        if (!silent) {
+          toast.success(pageId ? "Page saved!" : "Page created!");
+          setIsPublished(true);
+        }
 
-        // ✅ Navigate to newly created page if POST
         if (!pageId && result?.slug) {
-          // Use a microtask to ensure state updates finish
           setTimeout(() => {
             window.location.href = `/edit/${result.slug}`;
           }, 100);
@@ -95,7 +92,7 @@ export default function PuckEditor({
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Failed to save";
-        toast.error(message);
+        if (!silent) toast.error(message);
       } finally {
         setIsSaving(false);
       }
@@ -103,15 +100,27 @@ export default function PuckEditor({
     [slug, pageId, title, description]
   );
 
+  // Autosave: debounce saves 3 s after the last change
+  const handleChange = useCallback(
+    (data: Data) => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+      autoSaveTimerRef.current = setTimeout(() => {
+        savePage(data, { silent: true });
+      }, 3000);
+    },
+    [savePage]
+  );
+
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      {/* ✅ PUCK EDITOR */}
       <Puck
         config={puckConfig}
-        data={initialData} // ✅ Pre-loaded from server
-        onPublish={handlePublish}
+        data={initialData}
+        onPublish={savePage}
+        onChange={handleChange}
         overrides={{
-          // ✅ CUSTOM ACTION BAR
           actionBar: ({ children }) => (
             <div className="flex items-center justify-between px-4 py-3 border-b bg-white">
               <div className="flex items-center gap-3">
@@ -139,34 +148,32 @@ export default function PuckEditor({
             </div>
           ),
 
-          // ✅ INJECT PANELS INTO SIDEBAR
           canvas: ({ children }) => (
             <div className="flex h-full overflow-hidden">
               <div className="flex-1 overflow-auto">{children}</div>
             </div>
           ),
 
-          // ✅ CUSTOM SIDEBAR
           fields: ({ children }) => (
             <div className="flex flex-col h-full w-80 border-r bg-white overflow-hidden">
               <div className="flex-1 overflow-y-auto">{children}</div>
 
-              {/* ✅ AI PANEL AT BOTTOM */}
+              {/* AI panel with text refinement */}
               <div className="border-t">
-                <AIPanel slug={slug} />
+                <AIEnhancedPanel slug={slug} />
               </div>
 
-              {/* ✅ MEDIA PANEL */}
+              {/* Media panel */}
               <div className="border-t">
                 <MediaPanel />
               </div>
+
+              {/* Version history */}
+              <VersionControl pageId={pageId} slug={slug} />
             </div>
           ),
         }}
       />
-
-      {/* ✅ TOAST CONTAINER (Sonner) */}
-      <div className="fixed bottom-0 right-0 z-50" />
     </div>
   );
 }

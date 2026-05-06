@@ -1,6 +1,6 @@
 import type { Config, Data, FieldDef } from "@measured/puck";
 
-// ✅ TYPE-SAFE BLOCK PROPS
+// TYPE-SAFE BLOCK PROPS
 export type AllBlockProps = {
   HeroBlock: {
     headline: string;
@@ -54,10 +54,12 @@ export type AllBlockProps = {
     plans: Array<{
       name: string;
       price: string;
-      features: string[];
+      // FIX: Puck arrayFields stores items as objects; also accept plain strings
+      // from AI-generated content so both formats render correctly.
+      features: Array<string | { feature: string }>;
       cta: string;
       ctaHref: string;
-      highlighted?: boolean;
+      highlighted?: boolean | string;
     }>;
   };
   TestimonialBlock: {
@@ -76,7 +78,9 @@ export type AllBlockProps = {
     }>;
   };
   GalleryBlock: {
-    images: string[];
+    // FIX: Puck arrayFields stores items as objects; accept both plain strings
+    // (AI-generated) and objects (manually added via the editor sidebar).
+    images: Array<string | { image: string }>;
     columns?: number;
     gap?: number;
   };
@@ -229,19 +233,33 @@ const gapMap = {
   16: "gap-16",
 } as const;
 
-// ✅ STUB RENDERS (import actual components)
-const HeroBlock = (props: AllBlockProps["HeroBlock"]) => (
-  <div className="w-full bg-gradient-to-r from-slate-900 to-slate-800 text-white py-24 px-4">
-    <h1 className="text-4xl font-bold mb-2">{props.headline}</h1>
-    <p className="text-xl text-slate-300 mb-6">{props.subheadline}</p>
-    <a
-      href={props.ctaHref}
-      className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-lg transition"
+// STUB RENDERS
+const HeroBlock = (props: AllBlockProps["HeroBlock"]) => {
+  // FIX: Apply bgColor and bgImage props instead of hardcoding the gradient
+  const hasImage = !!props.bgImage;
+  const style = hasImage ? { backgroundImage: `url(${props.bgImage})`, backgroundSize: "cover", backgroundPosition: "center" } : {};
+  const bgClass = hasImage
+    ? "bg-slate-900"
+    : props.bgColor
+    ? ""
+    : "bg-gradient-to-r from-slate-900 to-slate-800";
+
+  return (
+    <div
+      className={`w-full text-white py-24 px-4 ${bgClass}`}
+      style={{ ...(props.bgColor && !hasImage ? { backgroundColor: props.bgColor } : {}), ...style }}
     >
-      {props.ctaLabel}
-    </a>
-  </div>
-);
+      <h1 className="text-4xl font-bold mb-2">{props.headline}</h1>
+      <p className="text-xl text-slate-300 mb-6">{props.subheadline}</p>
+      <a
+        href={props.ctaHref}
+        className="inline-block bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-6 py-3 rounded-lg transition"
+      >
+        {props.ctaLabel}
+      </a>
+    </div>
+  );
+};
 
 const CardGridBlock = (props: AllBlockProps["CardGridBlock"]) => {
   const colsClass = gridColsMap[Math.min(props.columns ?? 3, 4) as keyof typeof gridColsMap] || "grid-cols-3";
@@ -279,29 +297,40 @@ const FeatureListBlock = (props: AllBlockProps["FeatureListBlock"]) => (
   </div>
 );
 
-const StatsBlock = (props: AllBlockProps["StatsBlock"]) => (
-  <div className="w-full bg-slate-50 py-16 px-4">
-    <div className="grid grid-cols-4 gap-8 max-w-4xl mx-auto">
-      {props.stats.map((s, i) => (
-        <div key={i} className="text-center">
-          <div className="text-4xl font-bold text-indigo-600 mb-2">
-            {s.value}{s.unit}
+const StatsBlock = (props: AllBlockProps["StatsBlock"]) => {
+  // FIX: dynamic column count based on actual stats count, capped at 4
+  const count = Math.min(Math.max(props.stats.length, 1), 4);
+  const colsClass = gridColsMap[count as keyof typeof gridColsMap] || "grid-cols-4";
+  return (
+    <div className="w-full bg-slate-50 py-16 px-4">
+      <div className={`grid ${colsClass} gap-8 max-w-4xl mx-auto`}>
+        {props.stats.map((s, i) => (
+          <div key={i} className="text-center">
+            <div className="text-4xl font-bold text-indigo-600 mb-2">
+              {s.value}{s.unit}
+            </div>
+            <p className="text-slate-600">{s.label}</p>
           </div>
-          <p className="text-slate-600">{s.label}</p>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const CTABlock = (props: AllBlockProps["CTABlock"]) => (
   <div className="w-full bg-indigo-600 text-white py-16 px-4 text-center">
     <h2 className="text-3xl font-bold mb-4">{props.headline}</h2>
     <p className="text-lg text-indigo-100 mb-8 max-w-2xl mx-auto">{props.body}</p>
-    <div className="flex gap-4 justify-center">
+    {/* FIX: render secondary CTA when provided */}
+    <div className="flex gap-4 justify-center flex-wrap">
       <a href={props.primaryHref} className="bg-white text-indigo-600 font-bold px-6 py-3 rounded-lg hover:bg-indigo-50">
         {props.primaryCta}
       </a>
+      {props.secondaryCta && props.secondaryHref && (
+        <a href={props.secondaryHref} className="border-2 border-white text-white font-bold px-6 py-3 rounded-lg hover:bg-indigo-700">
+          {props.secondaryCta}
+        </a>
+      )}
     </div>
   </div>
 );
@@ -320,24 +349,35 @@ const FAQBlock = (props: AllBlockProps["FAQBlock"]) => (
   </div>
 );
 
+// Helper to extract feature text from either string or Puck array-field object
+function getPricingFeatureText(f: string | { feature: string }): string {
+  return typeof f === "string" ? f : (f?.feature ?? String(f));
+}
+
 const PricingBlock = (props: AllBlockProps["PricingBlock"]) => (
   <div className="w-full py-16 px-4">
     {props.title && <h2 className="text-3xl font-bold mb-12 text-center">{props.title}</h2>}
     <div className="grid grid-cols-3 gap-8 max-w-5xl mx-auto">
-      {props.plans.map((plan, i) => (
-        <div key={i} className={`p-8 border rounded-lg ${plan.highlighted ? "border-indigo-600 shadow-lg scale-105" : ""}`}>
-          <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
-          <div className="text-3xl font-bold text-indigo-600 mb-4">{plan.price}</div>
-          <ul className="space-y-2 mb-6 text-sm text-slate-600">
-            {plan.features.map((f, j) => (
-              <li key={j}>✓ {typeof f === "string" ? f : f}</li>
-            ))}
-          </ul>
-          <a href={plan.ctaHref} className="block text-center bg-indigo-600 text-white font-bold py-2 rounded hover:bg-indigo-700">
-            {plan.cta}
-          </a>
-        </div>
-      ))}
+      {props.plans.map((plan, i) => {
+        // FIX: coerce highlighted to boolean — Puck select fields store "true"/"false" strings
+        const isHighlighted =
+          plan.highlighted === true || plan.highlighted === "true";
+        return (
+          <div key={i} className={`p-8 border rounded-lg ${isHighlighted ? "border-indigo-600 shadow-lg scale-105" : ""}`}>
+            <h3 className="text-xl font-bold mb-2">{plan.name}</h3>
+            <div className="text-3xl font-bold text-indigo-600 mb-4">{plan.price}</div>
+            <ul className="space-y-2 mb-6 text-sm text-slate-600">
+              {/* FIX: handle both string[] (AI-generated) and {feature: string}[] (editor-added) */}
+              {plan.features.map((f, j) => (
+                <li key={j}>✓ {getPricingFeatureText(f)}</li>
+              ))}
+            </ul>
+            <a href={plan.ctaHref} className="block text-center bg-indigo-600 text-white font-bold py-2 rounded hover:bg-indigo-700">
+              {plan.cta}
+            </a>
+          </div>
+        );
+      })}
     </div>
   </div>
 );
@@ -379,6 +419,11 @@ const TimelineBlock = (props: AllBlockProps["TimelineBlock"]) => (
   </div>
 );
 
+// Helper to extract image URL from either a string or a Puck array-field object
+function getImageUrl(img: string | { image: string }): string {
+  return typeof img === "string" ? img : (img?.image ?? "");
+}
+
 const GalleryBlock = (props: AllBlockProps["GalleryBlock"]) => {
   const colsClass = gridColsMap[Math.min(props.columns ?? 3, 6) as keyof typeof gridColsMap] || "grid-cols-3";
   const gapClass = gapMap[Math.min(props.gap ?? 4, 16) as keyof typeof gapMap] || "gap-4";
@@ -386,8 +431,9 @@ const GalleryBlock = (props: AllBlockProps["GalleryBlock"]) => {
   return (
     <div className="w-full py-16 px-4">
       <div className={`grid ${colsClass} ${gapClass}`}>
+        {/* FIX: handle both string[] (AI-generated) and {image: string}[] (editor-added) */}
         {props.images.map((img, i) => (
-          <img key={i} src={img} alt="" className="w-full h-64 object-cover rounded-lg" />
+          <img key={i} src={getImageUrl(img)} alt="" className="w-full h-64 object-cover rounded-lg" />
         ))}
       </div>
     </div>
