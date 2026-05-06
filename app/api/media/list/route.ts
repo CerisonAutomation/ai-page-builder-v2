@@ -24,9 +24,12 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const category = searchParams.get("category") || undefined;
+    const tags = searchParams.get("tags")?.split(",").filter(Boolean) || undefined;
+    const search = searchParams.get("search") || undefined;
 
-    // ✅ Fetch media
-    const result = await listMedia(user.id, { limit, offset });
+    // ✅ Fetch media with filters
+    const result = await listMedia(user.id, { limit, offset, category, tags, search });
 
     return NextResponse.json(
       { files: result.files, total: result.total },

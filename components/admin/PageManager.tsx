@@ -10,6 +10,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { listPages, deletePage, publishPage, unpublishPage } from '@/lib/db/pages';
 import { logger } from '@/lib/utils/logger';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import CreatePageModal from './CreatePageModal';
 import PageEditor from './PageEditor';
 
@@ -38,6 +39,8 @@ export default function PageManager({ userId }: PageManagerProps) {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const pageSize = 20;
+  const t = useTranslations('admin.pages');
+  const tCommon = useTranslations('common');
 
   // Load pages
   const loadPages = useCallback(async () => {
@@ -54,11 +57,11 @@ export default function PageManager({ userId }: PageManagerProps) {
       setTotal(result.total);
     } catch (error) {
       logger.error('Failed to load pages', error);
-      toast.error('Failed to load pages');
+      toast.error(tCommon('error'));
     } finally {
       setLoading(false);
     }
-  }, [userId, offset, searchQuery, filterMode]);
+  }, [userId, offset, searchQuery, filterMode, tCommon]);
 
   useEffect(() => {
     loadPages();
@@ -86,29 +89,29 @@ export default function PageManager({ userId }: PageManagerProps) {
     try {
       if (isPublished) {
         await unpublishPage(pageId, userId);
-        toast.success('Page unpublished');
+        toast.success(t('draft'));
       } else {
         await publishPage(pageId, userId);
-        toast.success('Page published');
+        toast.success(t('published'));
       }
       await loadPages();
     } catch (error) {
       logger.error('Failed to update publish status', error);
-      toast.error('Failed to update page');
+      toast.error(tCommon('error'));
     }
   };
 
   // Handle delete
   const handleDelete = async (pageId: string) => {
-    if (!confirm('Are you sure you want to delete this page?')) return;
+    if (!confirm(tCommon('confirm'))) return;
 
     try {
       await deletePage(pageId, userId);
-      toast.success('Page deleted');
+      toast.success(t('deletePage'));
       await loadPages();
     } catch (error) {
       logger.error('Failed to delete page', error);
-      toast.error('Failed to delete page');
+      toast.error(tCommon('error'));
     }
   };
 
@@ -122,10 +125,10 @@ export default function PageManager({ userId }: PageManagerProps) {
       );
       await loadPages();
       setSelectedPages(new Set());
-      toast.success(`${selectedPages.size} pages published`);
+      toast.success(`${selectedPages.size} ${t('published').toLowerCase()}`);
     } catch (error) {
       logger.error('Bulk publish failed', error);
-      toast.error('Failed to publish pages');
+      toast.error(tCommon('error'));
     }
   };
 
@@ -138,15 +141,15 @@ export default function PageManager({ userId }: PageManagerProps) {
       );
       await loadPages();
       setSelectedPages(new Set());
-      toast.success(`${selectedPages.size} pages unpublished`);
+      toast.success(`${selectedPages.size} ${t('draft').toLowerCase()}`);
     } catch (error) {
       logger.error('Bulk unpublish failed', error);
-      toast.error('Failed to unpublish pages');
+      toast.error(tCommon('error'));
     }
   };
 
   const handleBulkDelete = async () => {
-    if (!confirm(`Delete ${selectedPages.size} pages? This cannot be undone.`)) return;
+    if (!confirm(`${t('deletePage')} ${selectedPages.size} ${t('title').toLowerCase()}? ${tCommon('confirm')}`)) return;
 
     try {
       await Promise.all(
@@ -156,10 +159,10 @@ export default function PageManager({ userId }: PageManagerProps) {
       );
       await loadPages();
       setSelectedPages(new Set());
-      toast.success(`${selectedPages.size} pages deleted`);
+      toast.success(`${selectedPages.size} ${t('deletePage').toLowerCase()}`);
     } catch (error) {
       logger.error('Bulk delete failed', error);
-      toast.error('Failed to delete pages');
+      toast.error(tCommon('error'));
     }
   };
 
@@ -202,7 +205,7 @@ export default function PageManager({ userId }: PageManagerProps) {
         <div className="flex-1 max-w-md">
           <input
             type="text"
-            placeholder="Search pages..."
+            placeholder={t('searchPages')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
@@ -218,16 +221,16 @@ export default function PageManager({ userId }: PageManagerProps) {
             }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500"
           >
-            <option value="all">All Pages</option>
-            <option value="published">Published</option>
-            <option value="draft">Drafts</option>
+            <option value="all">{t('title')} ({t('status')})</option>
+            <option value="published">{t('published')}</option>
+            <option value="draft">{t('draft')}</option>
           </select>
 
           <button
             onClick={() => setShowCreateModal(true)}
             className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition"
           >
-            + New Page
+            + {t('createPage')}
           </button>
         </div>
       </div>
@@ -236,26 +239,26 @@ export default function PageManager({ userId }: PageManagerProps) {
       {selectedPages.size > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
           <span className="text-sm font-medium text-blue-900">
-            {selectedPages.size} page{selectedPages.size !== 1 ? 's' : ''} selected
+            {selectedPages.size} {t('title').toLowerCase()}{selectedPages.size !== 1 ? 's' : ''} {tCommon('confirm').toLowerCase()}
           </span>
           <div className="flex gap-2">
             <button
               onClick={handleBulkPublish}
               className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
             >
-              Publish
+              {t('published')}
             </button>
             <button
               onClick={handleBulkUnpublish}
               className="px-3 py-1 text-sm bg-orange-600 text-white rounded hover:bg-orange-700"
             >
-              Unpublish
+              {t('draft')}
             </button>
             <button
               onClick={handleBulkDelete}
               className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
             >
-              Delete
+              {tCommon('delete')}
             </button>
           </div>
         </div>
@@ -274,24 +277,24 @@ export default function PageManager({ userId }: PageManagerProps) {
                   className="rounded"
                 />
               </th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Title</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Slug</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Status</th>
-              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">Updated</th>
-              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">Actions</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">{t('pageTitle')}</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">{t('slug')}</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">{t('status')}</th>
+              <th className="px-6 py-3 text-left text-sm font-semibold text-gray-900">{tCommon('save')}</th>
+              <th className="px-6 py-3 text-right text-sm font-semibold text-gray-900">{t('actions')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  Loading pages...
+                  {tCommon('loading')}
                 </td>
               </tr>
             ) : pages.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
-                  No pages found. {searchQuery && 'Try adjusting your search.'}
+                  {t('noPages')} {searchQuery && t('searchPages')}
                 </td>
               </tr>
             ) : (
@@ -316,7 +319,7 @@ export default function PageManager({ userId }: PageManagerProps) {
                     }}
                     tabIndex={0}
                     role="button"
-                    aria-label={`Edit ${page.title}`}
+                    aria-label={`${t('editPage')} ${page.title}`}
                   >
                     <div className="font-medium text-gray-900">{page.title}</div>
                     <div className="text-sm text-gray-600">{page.description}</div>
@@ -334,7 +337,7 @@ export default function PageManager({ userId }: PageManagerProps) {
                           : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
                       }`}
                     >
-                      {page.published ? '✓ Published' : '○ Draft'}
+                      {page.published ? `✓ ${t('published')}` : `○ ${t('draft')}`}
                     </button>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
@@ -345,13 +348,13 @@ export default function PageManager({ userId }: PageManagerProps) {
                       onClick={() => setSelectedPage(page)}
                       className="text-violet-600 hover:text-violet-900 text-sm font-medium"
                     >
-                      Edit
+                      {t('editPage')}
                     </button>
                     <button
                       onClick={() => handleDelete(page.id)}
                       className="text-red-600 hover:text-red-900 text-sm font-medium ml-3"
                     >
-                      Delete
+                      {tCommon('delete')}
                     </button>
                   </td>
                 </tr>
@@ -365,7 +368,7 @@ export default function PageManager({ userId }: PageManagerProps) {
       {total > pageSize && (
         <div className="flex items-center justify-between">
           <span className="text-sm text-gray-600">
-            Showing {offset + 1} to {Math.min(offset + pageSize, total)} of {total} pages
+            {t('pageTitle')} {offset + 1} {tCommon('to')} {Math.min(offset + pageSize, total)} {tCommon('of')} {total}
           </span>
           <div className="flex gap-2">
             <button
@@ -373,14 +376,14 @@ export default function PageManager({ userId }: PageManagerProps) {
               disabled={offset === 0}
               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
             >
-              ← Previous
+              ← {tCommon('back')}
             </button>
             <button
               onClick={() => setOffset(offset + pageSize)}
               disabled={offset + pageSize >= total}
               className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 hover:bg-gray-50"
             >
-              Next →
+              {tCommon('next')} →
             </button>
           </div>
         </div>

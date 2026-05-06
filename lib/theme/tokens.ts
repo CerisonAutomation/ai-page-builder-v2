@@ -4,12 +4,22 @@
  */
 
 export interface ThemeTokens {
+  // Base tokens
   colorPrimary: string;
   colorSecondary: string;
   colorBg: string;
   colorText: string;
   fontFamily: string;
   borderRadius: string;
+  // Extended tokens
+  colorAccent?: string;
+  colorSuccess?: string;
+  colorWarning?: string;
+  colorError?: string;
+  colorSurface?: string;
+  fontHeading?: string;
+  spacingUnit?: string;
+  containerWidth?: string;
 }
 
 /**
@@ -32,22 +42,33 @@ function sanitizeCssValue(value: string): string {
   return "";
 }
 
-export function tokensToCssVars(tokens: Partial<ThemeTokens>): string {
-  const map: Record<keyof ThemeTokens, string> = {
-    colorPrimary: "--color-primary",
-    colorSecondary: "--color-secondary",
-    colorBg: "--color-bg",
-    colorText: "--color-text",
-    fontFamily: "--font-family",
-    borderRadius: "--border-radius",
-  };
+// Map token keys to CSS custom property names
+const tokenToCssMap: Record<string, string> = {
+  colorPrimary: "--color-primary",
+  colorSecondary: "--color-secondary",
+  colorBg: "--color-bg",
+  colorText: "--color-text",
+  fontFamily: "--font-family",
+  borderRadius: "--border-radius",
+  colorAccent: "--color-accent",
+  colorSuccess: "--color-success",
+  colorWarning: "--color-warning",
+  colorError: "--color-error",
+  colorSurface: "--color-surface",
+  fontHeading: "--font-heading",
+  spacingUnit: "--spacing-unit",
+  containerWidth: "--container-width",
+};
 
+export function tokensToCssVars(tokens: Partial<ThemeTokens>): string {
   return Object.entries(tokens)
     .filter(([, v]) => v !== undefined && v !== "")
     .map(([k, v]) => {
-      const prop = map[k as keyof ThemeTokens];
+      const prop = tokenToCssMap[k];
+      if (!prop) return "";
       const safe = sanitizeCssValue(String(v));
       return `${prop}: ${safe};`;
     })
+    .filter(Boolean)
     .join(" ");
 }

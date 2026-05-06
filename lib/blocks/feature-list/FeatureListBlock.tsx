@@ -8,8 +8,8 @@ export function FeatureListBlock(props: AllBlockProps["FeatureListBlock"]) {
           <div key={i} className="flex gap-4">
             <div className="text-2xl">{f.icon}</div>
             <div>
-              <h3 className="font-semibold mb-1">{f.title}</h3>
-              <p className="text-slate-600">{f.description}</p>
+              <h3 className="font-semibold mb-1" style={{ fontFamily: 'var(--font-heading, Montserrat, sans-serif)' }}>{f.title}</h3>
+              <p style={{ color: 'var(--color-muted, #64748b)' }}>{f.description}</p>
             </div>
           </div>
         ))}

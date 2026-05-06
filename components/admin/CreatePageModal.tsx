@@ -10,6 +10,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { createPage } from '@/lib/db/pages';
 import { logger } from '@/lib/utils/logger';
+import { useTranslations } from 'next-intl';
 
 interface CreatePageModalProps {
   userId: string;
@@ -26,6 +27,8 @@ export default function CreatePageModal({
   const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('admin.pages');
+  const tCommon = useTranslations('common');
 
   const titleRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -52,12 +55,12 @@ export default function CreatePageModal({
     e.preventDefault();
 
     if (!title.trim()) {
-      toast.error('Title is required');
+      toast.error(tCommon('required'));
       return;
     }
 
     if (!slug.trim()) {
-      toast.error('Slug is required');
+      toast.error(tCommon('required'));
       return;
     }
 
@@ -85,11 +88,11 @@ export default function CreatePageModal({
         user_id: userId,
       });
 
-      toast.success('Page created successfully');
+      toast.success(t('createPage'));
       onSuccess(title, slug);
     } catch (error) {
       logger.error('Failed to create page', error);
-      toast.error('Failed to create page');
+      toast.error(tCommon('error'));
     } finally {
       setLoading(false);
     }
@@ -141,7 +144,7 @@ export default function CreatePageModal({
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       role="dialog"
       aria-modal="true"
-      aria-labelledby="create-page-modal-title"
+      aria-labelled-by="create-page-modal-title"
       onKeyDown={handleKeyDown}
     >
       <div
@@ -150,14 +153,14 @@ export default function CreatePageModal({
       >
         <div className="px-6 py-4 border-b border-gray-200">
           <h2 id="create-page-modal-title" className="text-lg font-semibold text-gray-900">
-            Create New Page
+            {t('createPage')}
           </h2>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-4 space-y-4">
           <div>
             <label htmlFor="page-title" className="block text-sm font-medium text-gray-700 mb-1">
-              Page Title *
+              {t('pageTitle')} *
             </label>
             <input
               id="page-title"
@@ -173,7 +176,7 @@ export default function CreatePageModal({
 
           <div>
             <label htmlFor="page-slug" className="block text-sm font-medium text-gray-700 mb-1">
-              URL Slug *
+              {t('slug')} *
             </label>
             <input
               id="page-slug"
@@ -185,13 +188,13 @@ export default function CreatePageModal({
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              Must be unique and URL-friendly
+              {tCommon('required')} {tCommon('and')} URL-friendly
             </p>
           </div>
 
           <div>
             <label htmlFor="page-description" className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+              {tCommon('description')}
             </label>
             <textarea
               id="page-description"
@@ -210,14 +213,14 @@ export default function CreatePageModal({
               disabled={loading}
               className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
-              Cancel
+              {tCommon('cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50"
             >
-              {loading ? 'Creating...' : 'Create Page'}
+              {loading ? tCommon('loading') : t('createPage')}
             </button>
           </div>
         </form>

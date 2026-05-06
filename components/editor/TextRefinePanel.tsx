@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { DiffPreview } from "./DiffPreview";
+import { useTranslations } from "next-intl";
 
 type RefinementMode = "shorter" | "engaging" | "professional" | "grammar" | "custom";
 
@@ -45,10 +46,12 @@ function TextRefinePanel({
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const t = useTranslations('ai');
+  const tCommon = useTranslations('common');
 
   const handleRefine = useCallback(async () => {
     if (!selectedText.trim()) {
-      toast.error("No text selected");
+      toast.error(tCommon('required'));
       return;
     }
 
@@ -130,7 +133,7 @@ function TextRefinePanel({
       if (e.name === "AbortError") {
         // Cancelled
       } else {
-        const message = e.message || "Refinement failed";
+        const message = e.message || t('error');
         setError(message);
         toast.error(message);
       }
@@ -138,25 +141,25 @@ function TextRefinePanel({
       setLoading(false);
       setStreaming(false);
     }
-  }, [selectedText, mode, customPrompt, context]);
+  }, [selectedText, mode, customPrompt, context, t]);
 
   const handleAccept = useCallback(() => {
     if (!refined.trim()) {
-      toast.error("No refined text to accept");
+      toast.error(tCommon('required'));
       return;
     }
 
     handleCopy();
-    toast.success("Text refined! Pasted to clipboard.");
+    toast.success(`${t('refine')}! ${tCommon('success')}.`);
     onClose();
-  }, [refined, onClose]);
+  }, [refined, onClose, t, tCommon]);
 
   const handleCopy = useCallback(() => {
     if (refined) {
       navigator.clipboard.writeText(refined);
-      toast.success("Copied to clipboard");
+      toast.success(tCommon('success'));
     }
-  }, [refined]);
+  }, [refined, tCommon]);
 
   const handleCancel = useCallback(() => {
     if (streamAbortRef.current) {
@@ -234,27 +237,27 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
         <div className="border-b px-4 py-3 flex items-center justify-between bg-gradient-to-r from-violet-50 to-indigo-50">
           <div className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-violet-600" />
-            <h2 id="refine-panel-title" className="font-semibold text-slate-900">Refine Text</h2>
+            <h2 id="refine-panel-title" className="font-semibold text-slate-900">{t('refineText')}</h2>
             {context && (
               <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded">
                 {context}
               </span>
             )}
           </div>
-<button
-             data-refine-close
-             onClick={onClose}
-             className="p-1 hover:bg-white rounded-md transition text-slate-500"
-             aria-label="Close text refinement panel"
-           >
-             <X className="w-5 h-5" />
-           </button>
+          <button
+            data-refine-close
+            onClick={onClose}
+            className="p-1 hover:bg-white rounded-md transition text-slate-500"
+            aria-label={tCommon('close')}
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-semibold text-slate-700">
-              Refinement Type
+              {t('refine')} Type
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {[
@@ -287,12 +290,12 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
           {mode === "custom" && (
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700">
-                Custom Instructions
+                {t('promptPlaceholder')}
               </label>
               <textarea
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="e.g., Make this more technical, add emojis, etc."
+                placeholder={t('promptPlaceholder')}
                 className="w-full text-xs border rounded-lg p-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400 min-h-[60px]"
               />
             </div>
@@ -325,7 +328,7 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
           {loading && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700 flex items-center gap-2">
               <Loader2 className="w-4 h-4 animate-spin" />
-              {streaming ? "Refining text..." : "Processing..."}
+              {streaming ? t('generating') : "Processing..."}
             </div>
           )}
         </div>
@@ -335,7 +338,7 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
             onClick={handleCancel}
             className="px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white border rounded-lg transition"
           >
-            Cancel
+            {tCommon('cancel')}
           </button>
 
           {refined ? (
@@ -345,14 +348,14 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white border rounded-lg transition"
               >
                 <Copy className="w-4 h-4" />
-                Copy
+                {tCommon('copy')}
               </button>
               <button
                 onClick={() => setRefined("")}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-white border rounded-lg transition"
               >
                 <RotateCcw className="w-4 h-4" />
-                Refine Again
+                {t('refine')} {tCommon('back')}
               </button>
               <button
                 onClick={handleAccept}
@@ -360,7 +363,7 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
                 className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg transition disabled:opacity-50"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                Accept
+                {tCommon('confirm')}
               </button>
             </>
           ) : (
@@ -372,12 +375,12 @@ const previousFocusRef = useRef<HTMLElement | null>(null);
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Refining...
+                  {t('generating')}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Refine Text
+                  {t('refine')} Text
                 </>
               )}
             </button>

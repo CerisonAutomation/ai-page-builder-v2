@@ -48,3 +48,43 @@ export function GalleryBlock(props: AllBlockProps["GalleryBlock"]) {
     </div>
   );
 }
+
+export const galleryFields = {
+  images: {
+    type: "array" as const,
+    label: "Images",
+    getItemSummary: (item: string) => item || "Empty image",
+    arrayFields: {
+      image: { type: "text" as const, label: "Image URL" },
+    },
+  },
+  columns: {
+    type: "select" as const,
+    label: "Columns",
+    options: [
+      { label: "1", value: 1 },
+      { label: "2", value: 2 },
+      { label: "3", value: 3 },
+      { label: "4", value: 4 },
+      { label: "5", value: 5 },
+      { label: "6", value: 6 },
+    ],
+  },
+  gap: {
+    type: "select" as const,
+    label: "Gap",
+    options: [
+      { label: "None", value: 0 },
+      { label: "Small", value: 2 },
+      { label: "Medium", value: 4 },
+      { label: "Large", value: 8 },
+    ],
+  },
+};
+
+export const galleryDefaultProps = {
+  images: ["https://placehold.co/400x256"],
+  columns: 3,
+  gap: 4,
+};
+

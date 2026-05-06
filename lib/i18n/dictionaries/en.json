@@ -1,0 +1,162 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "pages": "Pages",
+    "media": "Media",
+    "plugins": "Plugins",
+    "settings": "Settings",
+    "pageBuilder": "Page Builder"
+  },
+  "version": {
+    "title": "Version History",
+    "noVersions": "No versions yet",
+    "autoSaves": "Auto-saves happen every 30s",
+    "searchVersions": "Search versions...",
+    "all": "All",
+    "labeled": "Labeled",
+    "recent": "Recent",
+    "loading": "Loading versions...",
+    "compare": "Compare",
+    "restore": "Restore",
+    "delete": "Delete",
+    "close": "Close",
+    "save": "Save",
+    "comparison": "Comparison",
+    "blocksAdded": "blocks added",
+    "blocksRemoved": "blocks removed",
+    "blocksModified": "blocks modified",
+    "version": "Version",
+    "createPage": "Create page to enable version control"
+  },
+  "dashboard": {
+    "guestDashboard": "Guest Dashboard",
+    "welcomeGuest": "Welcome Guest",
+    "guestDescription": "You have limited access to the system.",
+    "availableFeatures": "Available Features",
+    "viewPublicPages": "View public pages",
+    "browseGallery": "Browse gallery",
+    "upgradeAccount": "Upgrade Account",
+    "upgradeDescription": "Contact admin to upgrade your account for full access.",
+    "contactAdmin": "Contact Admin",
+    "ownerDashboard": "Owner Dashboard",
+    "myPages": "My Pages",
+    "mediaUploads": "Media Uploads",
+    "ownerActions": "Owner Actions",
+    "createNewPage": "Create New Page",
+    "viewAllPages": "View All Pages",
+    "manageMedia": "Manage Media"
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Dashboard",
+      "welcome": "Welcome to Page Builder",
+      "description": "Manage your pages, media, and settings from here."
+    },
+    "pages": {
+      "title": "Pages",
+      "description": "Manage your website pages",
+      "createPage": "Create Page",
+      "editPage": "Edit",
+      "updated": "updated",
+      "deletePage": "Delete",
+      "searchPages": "Search pages...",
+      "noPages": "No pages found. Create your first page!",
+      "pageTitle": "Title",
+      "slug": "Slug",
+      "status": "Status",
+      "actions": "Actions",
+      "draft": "Draft",
+      "published": "Published",
+      "view": "View"
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Configure your page builder settings",
+      "general": "General",
+      "seo": "SEO",
+      "save": "Save Settings",
+      "saved": "Settings saved successfully!",
+      "theme": "Theme",
+      "siteName": "Site Name",
+      "apiKeyDescription": "Used for AI features. Get your key from the dashboard."
+    },
+    "media": {
+      "title": "Media Library",
+      "description": "Upload and manage your media files",
+      "upload": "Upload Files",
+      "dragDrop": "Drag and drop files here, or click to select",
+      "searchMedia": "Search media...",
+      "noMedia": "No media files found. Upload your first file!",
+      "delete": "Delete",
+      "preview": "Preview"
+    },
+    "plugins": {
+      "title": "Plugin Manager",
+      "description": "Install and manage plugins to extend functionality",
+      "installed": "Installed",
+      "available": "Available",
+      "install": "Install",
+      "uninstall": "Uninstall",
+      "configure": "Configure"
+    },
+    "settings": {
+      "title": "Settings",
+      "description": "Configure your page builder settings",
+      "general": "General",
+      "seo": "SEO",
+      "save": "Save Settings",
+      "saved": "Settings saved successfully!"
+    }
+  },
+  "editor": {
+    "title": "Page Editor",
+    "untitled": "Untitled",
+    "saving": "Saving...",
+    "saved": "Saved",
+    "publish": "Publish",
+    "pageUpdated": "Page updated!",
+    "pageCreated": "Page created!",
+    "pageTitleRequired": "Page title is required",
+    "saveFailed": "Save failed",
+    "invalidResponse": "Invalid server response (not JSON)",
+    "failedToSave": "Failed to save"
+  },
+  "ai": {
+    "title": "AI Assistant",
+    "generatePage": "Generate Page",
+    "generateBlock": "Generate Block",
+    "refineText": "Refine Text",
+    "promptPlaceholder": "Describe what you want to generate...",
+    "generating": "Generating...",
+    "generated": "Generated!",
+    "error": "An error occurred",
+    "refine": "Refine",
+    "cancel": "Cancel"
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "search": "Search",
+    "close": "Close",
+    "open": "Open",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "success": "Success",
+    "error": "Error",
+    "required": "Required",
+    "optional": "Optional"
+  },
+  "language": {
+    "switchToEnglish": "Switch to English",
+    "switchToSpanish": "Switch to Spanish",
+    "currentLanguage": "Current language"
+  }
+}

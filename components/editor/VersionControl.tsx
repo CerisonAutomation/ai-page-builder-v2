@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatDistance } from "date-fns";
+import { useTranslations } from "next-intl";
 
 interface VersionSnapshot {
   id: string;
@@ -70,6 +71,8 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
   const [editingLabel, setEditingLabel] = useState<string | null>(null);
   const [newLabel, setNewLabel] = useState("");
   const [restoringId, setRestoringId] = useState<string | null>(null);
+  const t = useTranslations('version');
+  const tCommon = useTranslations('common');
 
   // ✅ DIRTY-STATE REF: only auto-snapshot when data actually changes
   const prevSnapshotDataRef = useRef<string>("");
@@ -81,17 +84,17 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
     setLoading(true);
     try {
       const res = await fetch(`/api/versions/${pageId}?limit=50`);
-      if (!res.ok) throw new Error("Failed to load versions");
+      if (!res.ok) throw new Error(tCommon('error'));
 
       const data = await res.json();
       setVersions(data.versions || []);
     } catch (error) {
       logger.error("Failed to load version history", error, { pageId });
-      toast.error("Failed to load version history");
+      toast.error(tCommon('error'));
     } finally {
       setLoading(false);
     }
-  }, [pageId]);
+  }, [pageId, tCommon]);
 
   useEffect(() => {
     if (expanded && pageId) {
@@ -122,17 +125,17 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
           }
         );
 
-        if (!res.ok) throw new Error("Comparison failed");
+        if (!res.ok) throw new Error(tCommon('error'));
         const diff = await res.json();
         setComparisonResult(diff);
       } catch (error) {
         logger.error("Failed to compare versions", error);
-        toast.error("Failed to compare versions");
+        toast.error(t('compare'));
       } finally {
         setComparing(null);
       }
     },
-    [pageId, state?.data]
+    [pageId, state?.data, t, tCommon]
   );
 
   // Restore version
@@ -140,7 +143,7 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
     async (versionId: string) => {
       if (
         !confirm(
-          "Restore this version? Current changes will be saved as a snapshot."
+          `${t('restore')} ${tCommon('confirm')}`
         )
       ) {
         return;
@@ -154,7 +157,7 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
           body: JSON.stringify({ versionId }),
         });
 
-        if (!res.ok) throw new Error("Restore failed");
+        if (!res.ok) throw new Error(tCommon('error'));
 
         // ✅ P0-4: UPDATE EDITOR IMMEDIATELY
         const restoredData = await res.json();
@@ -163,22 +166,22 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
           data: restoredData.data as Data,
         });
 
-        toast.success("Version restored!");
+        toast.success(`${t('version')} ${tCommon('success')}!`);
         await loadVersions();
       } catch (error) {
-        toast.error("Failed to restore version");
+        toast.error(t('restore'));
       } finally {
         setRestoringId(null);
       }
     },
-    [pageId, loadVersions, dispatch]
+    [pageId, loadVersions, dispatch, t, tCommon]
   );
 
   // Update label
   const handleUpdateLabel = useCallback(
     async (versionId: string) => {
       if (!newLabel.trim()) {
-        toast.error("Label cannot be empty");
+        toast.error(tCommon('required'));
         return;
       }
 
@@ -189,7 +192,7 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
           body: JSON.stringify({ label: newLabel }),
         });
 
-        if (!res.ok) throw new Error("Update failed");
+        if (!res.ok) throw new Error(tCommon('error'));
 
         setVersions((prev) =>
           prev.map((v) =>
@@ -198,33 +201,33 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
         );
         setEditingLabel(null);
         setNewLabel("");
-        toast.success("Label updated");
+        toast.success(`${t('version')} ${tCommon('success')}!`);
       } catch (error) {
-        toast.error("Failed to update label");
+        toast.error(t('save'));
       }
     },
-    [pageId, newLabel]
+    [pageId, newLabel, t, tCommon]
   );
 
   // Delete version
   const handleDeleteVersion = useCallback(
     async (versionId: string) => {
-      if (!confirm("Delete this version? This cannot be undone.")) return;
+      if (!confirm(`${t('delete')} ${t('version')}? ${tCommon('confirm')}`)) return;
 
       try {
         const res = await fetch(`/api/versions/${pageId}/${versionId}`, {
           method: "DELETE",
         });
 
-        if (!res.ok) throw new Error("Delete failed");
+        if (!res.ok) throw new Error(tCommon('error'));
 
         setVersions((prev) => prev.filter((v) => v.id !== versionId));
-        toast.success("Version deleted");
+        toast.success(`${t('version')} ${tCommon('success')}!`);
       } catch (error) {
-        toast.error("Failed to delete version");
+        toast.error(t('delete'));
       }
     },
-    [pageId]
+    [pageId, t, tCommon]
   );
 
   // Filter versions
@@ -242,7 +245,7 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
   if (!pageId) {
     return (
       <div className="p-3 text-xs text-slate-400 border-t bg-slate-50">
-        Create page to enable version control
+        {t('createPage')}
       </div>
     );
   }
@@ -256,7 +259,7 @@ function VersionControl({ pageId, slug }: VersionControlProps) {
       >
         <div className="flex items-center gap-2">
           <Clock className="w-4 h-4" />
-          <span className="font-medium text-sm">Version History</span>
+          <span className="font-medium text-sm">{t('title')}</span>
           {versions.length > 0 && (
             <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
               {versions.length}

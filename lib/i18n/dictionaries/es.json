@@ -1,0 +1,162 @@
+{
+  "nav": {
+    "dashboard": "Panel de Control",
+    "pages": "Páginas",
+    "media": "Medios",
+    "plugins": "Complementos",
+    "settings": "Configuración",
+    "pageBuilder": "Creador de Páginas"
+  },
+  "version": {
+    "title": "Historial de Versiones",
+    "noVersions": "Aún no hay versiones",
+    "autoSaves": "Los guardados automáticos ocurren cada 30s",
+    "searchVersions": "Buscar versiones...",
+    "all": "Todos",
+    "labeled": "Etiquetados",
+    "recent": "Recientes",
+    "loading": "Cargando versiones...",
+    "compare": "Comparar",
+    "restore": "Restaurar",
+    "delete": "Eliminar",
+    "close": "Cerrar",
+    "save": "Guardar",
+    "comparison": "Comparación",
+    "blocksAdded": "bloques añadidos",
+    "blocksRemoved": "bloques eliminados",
+    "blocksModified": "bloques modificados",
+    "version": "Versión",
+    "createPage": "Crea una página para habilitar el control de versiones"
+  },
+  "dashboard": {
+    "guestDashboard": "Panel de Invitado",
+    "welcomeGuest": "Bienvenido Invitado",
+    "guestDescription": "Tienes acceso limitado al sistema.",
+    "availableFeatures": "Funciones Disponibles",
+    "viewPublicPages": "Ver páginas públicas",
+    "browseGallery": "Explorar galería",
+    "upgradeAccount": "Actualizar Cuenta",
+    "upgradeDescription": "Contacta al administrador para actualizar tu cuenta y obtener acceso completo.",
+    "contactAdmin": "Contactar Admin",
+    "ownerDashboard": "Panel de Propietario",
+    "myPages": "Mis Páginas",
+    "mediaUploads": "Subidas de Medios",
+    "ownerActions": "Acciones de Propietario",
+    "createNewPage": "Crear Nueva Página",
+    "viewAllPages": "Ver Todas las Páginas",
+    "manageMedia": "Gestionar Medios"
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Panel de Control",
+      "welcome": "Bienvenido al Creador de Páginas",
+      "description": "Gestiona tus páginas, medios y configuración desde aquí."
+    },
+    "pages": {
+      "title": "Páginas",
+      "description": "Gestiona las páginas de tu sitio web",
+      "createPage": "Crear Página",
+      "editPage": "Editar",
+      "updated": "actualizado",
+      "deletePage": "Eliminar",
+      "searchPages": "Buscar páginas...",
+      "noPages": "No se encontraron páginas. ¡Crea tu primera página!",
+      "pageTitle": "Título",
+      "slug": "Slug",
+      "status": "Estado",
+      "actions": "Acciones",
+      "draft": "Borrador",
+      "published": "Publicado",
+      "view": "Ver"
+    },
+    "settings": {
+      "title": "Configuración",
+      "description": "Configura los ajustes de tu creador de páginas",
+      "general": "General",
+      "seo": "SEO",
+      "save": "Guardar Configuración",
+      "saved": "¡Configuración guardada exitosamente!",
+      "theme": "Tema",
+      "siteName": "Nombre del Sitio",
+      "apiKeyDescription": "Usado para funciones de IA. Obtén tu clave desde el panel."
+    },
+    "media": {
+      "title": "Biblioteca de Medios",
+      "description": "Sube y gestiona tus archivos multimedia",
+      "upload": "Subir Archivos",
+      "dragDrop": "Arrastra y suelta archivos aquí, o haz clic para seleccionar",
+      "searchMedia": "Buscar medios...",
+      "noMedia": "No se encontraron archivos multimedia. ¡Sube tu primer archivo!",
+      "delete": "Eliminar",
+      "preview": "Vista Previa"
+    },
+    "plugins": {
+      "title": "Gestor de Complementos",
+      "description": "Instala y gestiona complementos para extender la funcionalidad",
+      "installed": "Instalados",
+      "available": "Disponibles",
+      "install": "Instalar",
+      "uninstall": "Desinstalar",
+      "configure": "Configurar"
+    },
+    "settings": {
+      "title": "Configuración",
+      "description": "Configura los ajustes de tu creador de páginas",
+      "general": "General",
+      "seo": "SEO",
+      "save": "Guardar Configuración",
+      "saved": "¡Configuración guardada exitosamente!"
+    }
+  },
+  "editor": {
+    "title": "Editor de Páginas",
+    "untitled": "Sin Título",
+    "saving": "Guardando...",
+    "saved": "Guardado",
+    "publish": "Publicar",
+    "pageUpdated": "¡Página actualizada!",
+    "pageCreated": "¡Página creada!",
+    "pageTitleRequired": "El título de la página es obligatorio",
+    "saveFailed": "Error al guardar",
+    "invalidResponse": "Respuesta inválida del servidor (no es JSON)",
+    "failedToSave": "Error al guardar"
+  },
+  "ai": {
+    "title": "Asistente de IA",
+    "generatePage": "Generar Página",
+    "generateBlock": "Generar Bloque",
+    "refineText": "Refinar Texto",
+    "promptPlaceholder": "Describe lo que quieres generar...",
+    "generating": "Generando...",
+    "generated": "¡Generado!",
+    "error": "Ocurrió un error",
+    "refine": "Refinar",
+    "cancel": "Cancelar"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "view": "Ver",
+    "search": "Buscar",
+    "close": "Cerrar",
+    "open": "Abrir",
+    "yes": "Sí",
+    "no": "No",
+    "confirm": "Confirmar",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "success": "Éxito",
+    "error": "Error",
+    "required": "Obligatorio",
+    "optional": "Opcional"
+  },
+  "language": {
+    "switchToEnglish": "Cambiar a Inglés",
+    "switchToSpanish": "Cambiar a Español",
+    "currentLanguage": "Idioma actual"
+  }
+}

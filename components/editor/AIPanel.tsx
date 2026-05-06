@@ -12,6 +12,7 @@ import { puckConfig, emptyPage } from "@/lib/puck/config";
 import { Loader2, Sparkles, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { v4 as uuid } from "uuid";
+import { useTranslations } from "next-intl";
 
 interface AIPanelProps {
   slug: string;
@@ -23,10 +24,12 @@ function AIPanel({ slug }: AIPanelProps) {
     const [mode, setMode] = useState<"block" | "page">("block");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const t = useTranslations('ai');
+    const tCommon = useTranslations('common');
 
     const handleGenerate = useCallback(async () => {
       if (!prompt.trim()) {
-        toast.error("Enter a prompt");
+        toast.error(tCommon('required'));
         return;
       }
 
@@ -54,7 +57,7 @@ function AIPanel({ slug }: AIPanelProps) {
           // ✅ Validate component exists
           if (!(output.componentName in puckConfig.components)) {
             throw new Error(
-              `Invalid block: ${output.componentName}. Contact support.`
+              `${t('error')}: ${output.componentName}. Contact support.`
             );
           }
 
@@ -65,7 +68,7 @@ function AIPanel({ slug }: AIPanelProps) {
             props: output.props || {},
           } as any);
 
-          toast.success(`${output.componentName} added to page!`);
+          toast.success(`${output.componentName} ${t('generated').toLowerCase()}!`);
           setPrompt("");
         } else {
           // ✅ GENERATE FULL PAGE
@@ -91,11 +94,11 @@ function AIPanel({ slug }: AIPanelProps) {
             data: pageData as Data,
           });
 
-          toast.success("Page generated! Review and customize.");
+          toast.success(`${t('generatePage')} ${t('generated')}! ${t('refine')}.`);
           setPrompt("");
         }
       } catch (error: unknown) {
-        let message = "Generation failed";
+        let message = t('error');
         let isSafetyError = false;
 
         if (error instanceof Error) {
@@ -109,14 +112,14 @@ function AIPanel({ slug }: AIPanelProps) {
         setError(message);
 
         if (isSafetyError) {
-          toast.error("Content blocked by safety filters. Please modify your prompt.");
+          toast.error(`${t('error')}: ${tCommon('error')}`);
         } else {
           toast.error(message);
         }
       } finally {
         setLoading(false);
       }
-    }, [prompt, mode, slug, dispatch]);
+    }, [prompt, mode, slug, dispatch, t, tCommon]);
 
   // ✅ KEYBOARD SHORTCUT
   const handleKeyDown = useCallback(
@@ -140,7 +143,7 @@ function AIPanel({ slug }: AIPanelProps) {
           }`}
         >
           <Wand2 className="w-3 h-3 inline mr-1" />
-          Block
+          {t('generateBlock')}
         </button>
         <button
           onClick={() => setMode("page")}
@@ -151,7 +154,7 @@ function AIPanel({ slug }: AIPanelProps) {
           }`}
         >
           <Sparkles className="w-3 h-3 inline mr-1" />
-          Page
+          {t('generatePage')}
         </button>
       </div>
 
@@ -159,11 +162,7 @@ function AIPanel({ slug }: AIPanelProps) {
         value={prompt}
         onChange={(e) => setPrompt(e.target.value)}
         onKeyDown={handleKeyDown}
-        placeholder={
-          mode === "block"
-            ? "e.g., Blue hero with headline and CTA..."
-            : "e.g., SaaS landing page for project management..."
-        }
+        placeholder={t('promptPlaceholder')}
         rows={3}
         className="w-full text-xs border rounded-md p-2 resize-none focus:outline-none focus:ring-2 focus:ring-violet-400"
       />
@@ -182,18 +181,18 @@ function AIPanel({ slug }: AIPanelProps) {
         {loading ? (
           <>
             <Loader2 className="w-3 h-3 animate-spin" />
-            Generating...
+            {t('generating')}
           </>
         ) : (
           <>
             <Wand2 className="w-3 h-3" />
-            {mode === "block" ? "Generate Block" : "Generate Page"}
+            {mode === "block" ? t('generateBlock') : t('generatePage')}
           </>
         )}
       </button>
 
       <p className="text-[10px] text-slate-400 text-center">
-        ⌘↵ or Ctrl+↵ to generate
+        ⌘↵ {tCommon('or')} Ctrl+↵ {t('refine')}
       </p>
     </div>
   );

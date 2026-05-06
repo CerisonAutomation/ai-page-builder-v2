@@ -7,6 +7,7 @@ import { logger } from "@/lib/utils/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { createServerSupabaseClient } from "@/lib/db/supabase";
 import { uploadMedia } from "@/lib/db/media";
+import { normalizeCategory } from "@/lib/media/categories";
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,13 +24,16 @@ export async function POST(req: NextRequest) {
     // ✅ Parse form data
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const category = normalizeCategory(formData.get("category") as string);
+    const altText = formData.get("altText") as string || undefined;
+    const tags = formData.get("tags") ? JSON.parse(formData.get("tags") as string) : undefined;
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // ✅ Upload
-    const media = await uploadMedia(file, user.id);
+    // ✅ Upload with metadata
+    const media = await uploadMedia(file, user.id, { category, altText, tags });
 
     return NextResponse.json(media);
   } catch (error: unknown) {

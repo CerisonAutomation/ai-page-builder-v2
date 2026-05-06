@@ -23,6 +23,8 @@ const SavePageSchema = z.object({
       .regex(/^[a-z0-9-]+$/, "Slug must contain only lowercase letters, numbers, and hyphens"),
     title: z.string().min(1).max(255),
     description: z.string().max(1000).optional(),
+    meta_title_es: z.string().max(255).optional(),
+    meta_desc_es: z.string().max(1000).optional(),
     data: z.object({
       content: z.array(z.object({
         type: z.string(),
@@ -99,7 +101,7 @@ export async function PUT(
         );
       }
 
-      const { slug: requestSlug, title, description, data } = parsed.data;
+      const { slug: requestSlug, title, description, meta_title_es, meta_desc_es, data } = parsed.data;
 
       // ✅ Validate slug matches URL
       if (requestSlug !== slug) {
@@ -119,7 +121,7 @@ export async function PUT(
       const updated = await updatePage(
         page.id,
         user.id,
-        { title, description, data }
+        { title, description, meta_title_es, meta_desc_es, data }
       );
 
       return NextResponse.json(updated);

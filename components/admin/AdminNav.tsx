@@ -3,19 +3,22 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { LayoutDashboard, FileText, Image, Puzzle, Settings, Menu, X } from 'lucide-react';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 const navItems = [
-  { href: '/admin', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/admin/pages', label: 'Pages', icon: FileText },
-  { href: '/admin/media', label: 'Media', icon: Image },
-  { href: '/admin/plugins', label: 'Plugins', icon: Puzzle },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+  { href: '/admin', key: 'dashboard', icon: LayoutDashboard },
+  { href: '/admin/pages', key: 'pages', icon: FileText },
+  { href: '/admin/media', key: 'media', icon: Image },
+  { href: '/admin/plugins', key: 'plugins', icon: Puzzle },
+  { href: '/admin/settings', key: 'settings', icon: Settings },
 ];
 
 export default function AdminNav() {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const t = useTranslations('nav');
 
   const isActive = (href: string) => {
     if (href === '/admin') {
@@ -31,7 +34,7 @@ export default function AdminNav() {
           {/* Logo/Brand */}
           <div className="flex-shrink-0">
             <Link href="/admin" className="text-xl font-bold text-violet-600">
-              Page Builder
+              {t('pageBuilder')}
             </Link>
           </div>
 
@@ -52,28 +55,31 @@ export default function AdminNav() {
                   }`}
                 >
                   <Icon className="w-4 h-4" aria-hidden="true" />
-                  {item.label}
+                  {t(item.key)}
                 </Link>
               );
             })}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              type="button"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-expanded={mobileOpen}
-              aria-controls="mobile-menu"
-              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
-            >
-              {mobileOpen ? (
-                <X className="w-6 h-6" aria-hidden="true" />
-              ) : (
-                <Menu className="w-6 h-6" aria-hidden="true" />
-              )}
-            </button>
+          {/* Language Switcher & Mobile menu button */}
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <div className="md:hidden">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                aria-expanded={mobileOpen}
+                aria-controls="mobile-menu"
+                aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-violet-500"
+              >
+                {mobileOpen ? (
+                  <X className="w-6 h-6" aria-hidden="true" />
+                ) : (
+                  <Menu className="w-6 h-6" aria-hidden="true" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -98,10 +104,13 @@ export default function AdminNav() {
                   }`}
                 >
                   <Icon className="w-5 h-5" aria-hidden="true" />
-                  {item.label}
+                  {t(item.key)}
                 </Link>
               );
             })}
+            <div className="px-3 py-2">
+              <LanguageSwitcher />
+            </div>
           </div>
         </div>
       )}

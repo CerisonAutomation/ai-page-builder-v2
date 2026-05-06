@@ -27,6 +27,7 @@ export { StatsBlock, statsFields, statsDefaultProps } from "./stats";
 
 // CTA
 export { CTABlock, ctaFields, ctaDefaultProps } from "./cta";
+export { CTAWithImageBlock, ctaWithImageBlockFields, ctaWithImageBlockDefaultProps } from "./cta";
 
 // FAQ
 export { FAQBlock, faqFields, faqDefaultProps } from "./faq";
@@ -46,3 +47,27 @@ export { TimelineBlock, timelineFields, timelineDefaultProps } from "./timeline"
 
 // Gallery
 export { GalleryBlock, galleryFields, galleryDefaultProps } from "./gallery";
+
+// Header
+export { HeaderBlock, headerBlockFields, headerBlockDefaultProps } from "./header";
+
+// Footer
+export { FooterBlock, footerBlockFields, footerBlockDefaultProps } from "./footer";
+
+// Hero Video
+export { HeroVideoBlock, heroVideoBlockFields, heroVideoBlockDefaultProps } from "./image";
+
+// Logo Gallery
+export { LogoGalleryBlock, logoGalleryBlockFields, logoGalleryBlockDefaultProps } from "./logo";
+
+// Stats Counter
+export { StatsCounterBlock, statsCounterBlockFields, statsCounterBlockDefaultProps } from "./stats-counter";
+
+// Testimonials Carousel
+export { TestimonialsCarouselBlock, testimonialsCarouselBlockFields, testimonialsCarouselBlockDefaultProps } from "./testimonials-carousel";
+
+// Properties Grid
+export { PropertiesGridBlock, propertiesGridBlockFields, propertiesGridBlockDefaultProps } from "./properties";
+
+// Services Grid
+export { ServicesGridBlock, servicesGridBlockFields, servicesGridBlockDefaultProps } from "./services";

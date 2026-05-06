@@ -21,6 +21,8 @@ const CreatePageSchema = z.object({
     title: z.string().min(3).max(255),
     slug: z.string().min(3).max(255).regex(/^[a-z0-9-]+$/),
     description: z.string().max(1000).optional(),
+    meta_title_es: z.string().max(255).optional(),
+    meta_desc_es: z.string().max(1000).optional(),
     data: z.record(z.string(), z.any()).optional(),
     status: z.enum(['draft', 'review', 'approved', 'published', 'scheduled', 'archived']).optional(),
   });
@@ -143,7 +145,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, slug, description, data, status } = validated.data;
+    const { title, slug, description, meta_title_es, meta_desc_es, data, status } = validated.data;
 
     // Get current user
     const {
@@ -188,6 +190,8 @@ export async function POST(request: NextRequest) {
         title,
         slug,
         description: description || '',
+        meta_title_es: meta_title_es || null,
+        meta_desc_es: meta_desc_es || null,
         data: data || { content: [] },
         status: status || 'draft',
         created_by: user.id,

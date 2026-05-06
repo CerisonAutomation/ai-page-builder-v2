@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface Settings {
   apiKey: string;
@@ -27,13 +28,15 @@ export function SettingsPanel() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations('admin.settings');
+  const tCommon = useTranslations('common');
 
   const loadSettings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const res = await fetch('/api/settings');
-      if (!res.ok) throw new Error('Failed to load settings');
+      if (!res.ok) throw new Error(tCommon('error'));
       const data = await res.json();
       setSettings({
         apiKey: data.apiKey || '',
@@ -42,13 +45,13 @@ export function SettingsPanel() {
         siteDescription: data.siteDescription || '',
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load settings';
+      const message = err instanceof Error ? err.message : tCommon('error');
       setError(message);
       toast.error(message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tCommon]);
 
   useEffect(() => {
     loadSettings();
@@ -66,9 +69,9 @@ export function SettingsPanel() {
         body: JSON.stringify(settings),
       });
 
-      if (!res.ok) throw new Error('Failed to save settings');
+      if (!res.ok) throw new Error(tCommon('error'));
 
-      toast.success('Settings saved successfully');
+      toast.success(t('saved'));
 
       // Apply theme immediately
       if (settings.theme === 'dark') {
@@ -80,7 +83,7 @@ export function SettingsPanel() {
         document.documentElement.classList.toggle('dark', prefersDark);
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to save settings';
+      const message = err instanceof Error ? err.message : tCommon('error');
       setError(message);
       toast.error(message);
     } finally {
@@ -102,7 +105,7 @@ export function SettingsPanel() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-3xl font-bold mb-6">Settings</h1>
+      <h1 className="text-3xl font-bold mb-6">{t('title')}</h1>
 
       {error && (
         <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
@@ -115,7 +118,7 @@ export function SettingsPanel() {
         {/* Site Name */}
         <div>
           <label htmlFor="siteName" className="block text-sm font-medium text-gray-700 mb-2">
-            Site Name
+            {tCommon('siteName')}
           </label>
           <input
             id="siteName"
@@ -130,7 +133,7 @@ export function SettingsPanel() {
         {/* Site Description */}
         <div>
           <label htmlFor="siteDescription" className="block text-sm font-medium text-gray-700 mb-2">
-            Site Description
+            {tCommon('description')}
           </label>
           <textarea
             id="siteDescription"
@@ -156,14 +159,14 @@ export function SettingsPanel() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Used for AI features. Get your key from the dashboard.
+            {t('apiKeyDescription')}
           </p>
         </div>
 
         {/* Theme Selector */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
-            Theme
+            {t('theme')}
           </label>
           <div className="grid grid-cols-3 gap-3">
             {THEMES.map((theme) => (
@@ -197,10 +200,10 @@ export function SettingsPanel() {
             {saving ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Saving...
+                {tCommon('saving')}
               </>
             ) : (
-              'Save Settings'
+              <>{t('save')}</>
             )}
           </button>
         </div>

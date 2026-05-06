@@ -5,7 +5,6 @@
  */
 
 import { createServerClient, createBrowserClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 
 /**
  * Create server-side Supabase client with user context (anon key)
@@ -13,6 +12,8 @@ import { cookies } from 'next/headers';
  * Creates a fresh client per request - no singleton for server
  */
 export async function createServerSupabaseClient() {
+  // Dynamic import to avoid issues with client-side bundling
+  const { cookies } = await import('next/headers');
   const cookieStore = await cookies();
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

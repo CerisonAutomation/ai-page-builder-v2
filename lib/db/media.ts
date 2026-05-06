@@ -13,8 +13,14 @@ export const MediaSchema = z.object({
   url: z.string(),
   mime_type: z.string(),
   size: z.number(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  category: z.string().default("other"),
+  alt_text: z.string().optional(),
+  tags: z.array(z.string()).optional(),
   user_id: z.string(),
   created_at: z.string(),
+  updated_at: z.string().optional(),
 });
 
 export type Media = z.infer<typeof MediaSchema>;
@@ -27,9 +33,10 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
  */
 export async function uploadMedia(
   file: File,
-  userId: string
+  userId: string,
+  options?: { category?: string; altText?: string; tags?: string[] }
 ): Promise<Media> {
-  return uploadFile(file, userId);
+  return uploadFile(file, userId, options);
 }
 
 /**
@@ -37,18 +44,36 @@ export async function uploadMedia(
  */
 export async function listMedia(
     userId: string,
-    options?: { limit?: number; offset?: number }
+    options?: { limit?: number; offset?: number; category?: string; tags?: string[]; search?: string }
   ) {
     const supabase = await createServerSupabaseClient();
     const limit = options?.limit ?? 20;
     const offset = options?.offset ?? 0;
 
-    const { data: files, error, count } = await supabase
+    let query = supabase
       .from("media")
       .select("*", { count: "exact" })
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .order("created_at", { ascending: false });
+
+    // Filter by category
+    if (options?.category) {
+      query = query.eq("category", options.category);
+    }
+
+    // Filter by tags (if tags column is array)
+    if (options?.tags && options.tags.length > 0) {
+      query = query.contains("tags", options.tags);
+    }
+
+    // Search by filename
+    if (options?.search) {
+      query = query.ilike("filename", `%${options.search}%`);
+    }
+
+    query = query.range(offset, offset + limit - 1);
+
+    const { data: files, error, count } = await query;
 
     if (error) throw error;
     return { files: (files ?? []) as Media[], total: count ?? 0 };
@@ -94,7 +119,8 @@ export async function getMedia(mediaIdOrUserId: string, userId?: string) {
  */
 export async function uploadFile(
   file: File,
-  userId: string
+  userId: string,
+  options?: { category?: string; altText?: string; tags?: string[] }
 ): Promise<Media> {
   const supabase = await createServerSupabaseClient();
 
@@ -134,6 +160,9 @@ export async function uploadFile(
         url: publicUrl,
         mime_type: file.type,
         size: file.size,
+        category: options?.category || "other",
+        alt_text: options?.altText || null,
+        tags: options?.tags || null,
         user_id: userId,
       },
     ])
