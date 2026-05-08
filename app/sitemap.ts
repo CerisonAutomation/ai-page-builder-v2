@@ -1,44 +1,50 @@
 /**
- * Sitemap Generation
- * Creates dynamic sitemap for search engines
+ * Sitemap — dynamically generated from all published pages.
+ *
+ * Registered automatically by Next.js at /sitemap.xml.
+ *
+ * @module app/sitemap
  */
 
-import { MetadataRoute } from 'next';
-import { createServerSupabaseClient } from '@/lib/db/supabase';
+import type { MetadataRoute } from "next";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://yoursite.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://yoursite.com';
-  const supabase = await createServerSupabaseClient();
-
-  // Fetch published pages for sitemap
-  const { data: pages } = await supabase
-    .from('pages')
-    .select('slug, updated_at')
-    .eq('published_at', true)
-    .limit(50000); // Sitemap limit
-
-  const pageEntries: MetadataRoute.Sitemap = (pages || []).map((page) => ({
-    url: `${baseUrl}/${page.slug}`,
-    lastModified: page.updated_at,
-    changeFrequency: 'weekly' as const,
-    priority: 0.8,
-  }));
-
-  // Add main routes
-  const mainRoutes: MetadataRoute.Sitemap = [
+  // Static routes
+  const staticRoutes: MetadataRoute.Sitemap = [
     {
-      url: baseUrl,
+      url: appUrl,
       lastModified: new Date(),
-      changeFrequency: 'daily',
+      changeFrequency: "daily",
       priority: 1,
-    },
-    {
-      url: `${baseUrl}/edit`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.9,
     },
   ];
 
-  return [...mainRoutes, ...pageEntries];
+  // Dynamic published pages
+  let pageRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const { listPages } = await import("@/lib/db/pages");
+    // Fetch up to 1000 published pages for sitemap
+    const { pages } = await listPages("system", 1000, 0).catch(() => ({
+      pages: [],
+    }));
+    pageRoutes = pages
+      .filter((p: { published: boolean }) => p.published)
+      .map(
+        (p: {
+          slug: string;
+          updated_at: string;
+        }) => ({
+          url: `${appUrl}/${p.slug}`,
+          lastModified: new Date(p.updated_at),
+          changeFrequency: "weekly" as const,
+          priority: 0.8,
+        })
+      );
+  } catch {
+    // DB unavailable at build time — static routes only
+  }
+
+  return [...staticRoutes, ...pageRoutes];
 }

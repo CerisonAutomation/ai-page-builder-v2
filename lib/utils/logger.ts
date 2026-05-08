@@ -1,175 +1,98 @@
 /**
- * Structured Logger — Standardised Logging Across App
- * ✅ All logs: { timestamp, level, context, message, duration? }
+ * Structured Logger
+ *
+ * Wraps console methods with structured JSON output in production
+ * and human-readable format in development.
+ *
+ * Usage:
+ * ```ts
+ * import { logger } from '@/lib/utils/logger';
+ * logger.info('Page rendered', { slug });
+ * logger.error('DB query failed', error, { userId });
+ * ```
+ *
+ * @module lib/utils/logger
  */
 
-export type LogLevel = "debug" | "info" | "warn" | "error";
+type LogLevel = "debug" | "info" | "warn" | "error";
 
-interface LogEntry {
-  timestamp: string;
-  level: LogLevel;
-  context: Record<string, unknown>;
-  message: string;
-  duration?: number;
-  error?: {
-    code?: string;
-    message?: string;
-    stack?: string;
+type LogMeta = Record<string, unknown>;
+
+const isDev = process.env.NODE_ENV === "development";
+
+function buildLogEntry(
+  level: LogLevel,
+  message: string,
+  error?: unknown,
+  meta?: LogMeta
+) {
+  return {
+    timestamp: new Date().toISOString(),
+    level,
+    message,
+    ...(meta && Object.keys(meta).length > 0 ? { meta } : {}),
+    ...(error
+      ? {
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            stack:
+              error instanceof Error && isDev ? error.stack : undefined,
+            code:
+              (error as Record<string, unknown>)?.code ?? undefined,
+          },
+        }
+      : {}),
   };
 }
 
-class Logger {
-  private isDev = process.env.NODE_ENV === "development";
-  private context: Record<string, unknown> = {};
+/**
+ * Application logger — structured JSON in production, pretty-print in dev.
+ */
+export const logger = {
+  /**
+   * Log a debug-level message (dev only).
+   */
+  debug(message: string, meta?: LogMeta): void {
+    if (!isDev) return;
+    console.debug(JSON.stringify(buildLogEntry("debug", message, undefined, meta), null, 2));
+  },
 
   /**
-   * Set persistent context for all logs in this scope
-   * Useful for request IDs, user IDs, etc.
+   * Log an informational message.
    */
-  setContext(context: Record<string, unknown>) {
-    this.context = { ...this.context, ...context };
-  }
-
-  /**
-   * Clear context
-   */
-  clearContext() {
-    this.context = {};
-  }
-
-  /**
-   * Create child logger with additional context
-   */
-  child(context: Record<string, unknown>): Logger {
-    const child = new Logger();
-    child.context = { ...this.context, ...context };
-    return child;
-  }
-
-  /**
-   * Debug level — detailed info for development
-   */
-  debug(message: string, context: Record<string, unknown> = {}, durationMs?: number) {
-    if (!this.isDev) return;
-    this.log("debug", message, context, durationMs);
-  }
-
-  /**
-   * Info level — important events (page saved, user logged in, etc.)
-   */
-  info(message: string, context: Record<string, unknown> = {}, durationMs?: number) {
-    this.log("info", message, context, durationMs);
-  }
-
-  /**
-   * Warn level — potentially problematic situations
-   */
-  warn(message: string, context: Record<string, unknown> = {}, durationMs?: number) {
-    this.log("warn", message, context, durationMs);
-  }
-
-  /**
-   * Error level — error conditions
-   */
-  error(message: string, error?: Error | unknown, context: Record<string, unknown> = {}, durationMs?: number) {
-    const errorContext = this.extractError(error);
-    this.log("error", message, { ...errorContext, ...context }, durationMs);
-  }
-
-  /**
-   * Time an operation and log result
-   */
-  async timed<T>(
-    message: string,
-    fn: () => Promise<T>,
-    context: Record<string, unknown> = {}
-  ): Promise<T> {
-    const start = performance.now();
-    try {
-      const result = await fn();
-      const duration = Math.round(performance.now() - start);
-      this.info(message, context, duration);
-      return result;
-    } catch (error) {
-      const duration = Math.round(performance.now() - start);
-      this.error(`${message} failed`, error, context, duration);
-      throw error;
-    }
-  }
-
-  /**
-   * Log HTTP request
-   */
-  request(method: string, path: string, status: number, durationMs: number, context: Record<string, unknown> = {}) {
-    const statusEmoji = status < 300 ? "✅" : status < 400 ? "ℹ️" : status < 500 ? "⚠️" : "❌";
-    const message = `${statusEmoji} ${method} ${path} ${status}`;
-    this.info(message, { ...context, status, duration: durationMs }, durationMs);
-  }
-
-  /**
-   * Internal: extract error info
-   */
-  private extractError(error: unknown) {
-    if (!error) return {};
-
-    if (error instanceof Error) {
-      const errorWithCode = error as Error & { code?: string | number };
-      return {
-        error: {
-          code: String(errorWithCode.code ?? "UNKNOWN"),
-          message: error.message,
-          stack: error.stack,
-        },
-      };
-    }
-
-    return {
-      error: {
-        message: String(error),
-      },
-    };
-  }
-
-  /**
-   * Internal: log to console
-   */
-  private log(
-    level: LogLevel,
-    message: string,
-    context: Record<string, unknown> = {},
-    durationMs?: number
-  ) {
-    const entry: LogEntry = {
-      timestamp: new Date().toISOString(),
-      level,
-      context: { ...this.context, ...context },
-      message,
-    };
-
-    if (durationMs !== undefined) {
-      entry.duration = durationMs;
-    }
-
-    const logFn = console[level] || console.log;
-
-    if (this.isDev) {
-      // Development: pretty print
-      logFn(`[${entry.level.toUpperCase()}] ${entry.message}`, {
-        ...entry.context,
-        duration: entry.duration,
-      });
+  info(message: string, meta?: LogMeta): void {
+    const entry = buildLogEntry("info", message, undefined, meta);
+    if (isDev) {
+      console.info(`[INFO] ${message}`, meta ?? "");
     } else {
-      // Production: JSON logs (for log aggregation services)
-      logFn(JSON.stringify(entry));
+      console.info(JSON.stringify(entry));
     }
-  }
-}
+  },
 
-export const logger = new Logger();
+  /**
+   * Log a warning.
+   */
+  warn(message: string, meta?: LogMeta): void {
+    const entry = buildLogEntry("warn", message, undefined, meta);
+    if (isDev) {
+      console.warn(`[WARN] ${message}`, meta ?? "");
+    } else {
+      console.warn(JSON.stringify(entry));
+    }
+  },
 
-// ✅ CREATE SCOPED LOGGERS
-export function createLogger(scope: string) {
-  const scoped = new Logger();
-  scoped.setContext({ scope });
-  return scoped;
-}
+  /**
+   * Log an error with optional context metadata.
+   * @param message - Human-readable description
+   * @param error   - The caught error (Error instance or unknown)
+   * @param meta    - Additional key-value context (userId, slug, etc.)
+   */
+  error(message: string, error?: unknown, meta?: LogMeta): void {
+    const entry = buildLogEntry("error", message, error, meta);
+    if (isDev) {
+      console.error(`[ERROR] ${message}`, error ?? "", meta ?? "");
+    } else {
+      console.error(JSON.stringify(entry));
+    }
+  },
+};

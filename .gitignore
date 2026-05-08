@@ -6,12 +6,18 @@ node_modules/
 # Testing
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
 
 # Build outputs
 .next/
 out/
 build/
 dist/
+
+# TypeScript incremental build info — auto-generated, never commit
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Environment
 .env
@@ -45,5 +51,8 @@ Thumbs.db
 .turbo/
 .cache/
 
-# Optional
+# Vercel
 .vercel/
+
+# Supabase local
+supabase/.temp/
